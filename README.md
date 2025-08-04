@@ -58,7 +58,9 @@ cp .env.example .env
    ```
 
 2. Add your API keys and tokens:
-   - **ANTHROPIC_API_KEY**: Get from [Anthropic Console](https://console.anthropic.com/settings/keys)
+   - **ANTHROPIC_API_KEY**: 
+     - If you have a Claude Pro/Team subscription, you can skip this! Just run `claude auth login` after installation
+     - For API access: Get from [Anthropic Console](https://console.anthropic.com/settings/keys)
    - **GITHUB_TOKEN**: Generate at [GitHub Settings](https://github.com/settings/tokens)
    - **TAILSCALE_AUTH_KEY**: (Optional) Get from [Tailscale Admin](https://login.tailscale.com/admin/settings/keys)
 
@@ -106,6 +108,8 @@ After running the setup script:
 1. **Claude Code**:
    ```bash
    claude auth login
+   # For Claude Pro/Team subscribers: Follow the browser authentication
+   # For API key users: Use --key flag or paste when prompted
    ```
 
 2. **GitHub CLI**:
