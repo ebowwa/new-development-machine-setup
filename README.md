@@ -1,4 +1,4 @@
-# Machine God 🤖
+# New Development Machine Setup 🚀
 
 Automated setup script for essential development tools across multiple platforms.
 
@@ -12,8 +12,8 @@ Automated setup script for essential development tools across multiple platforms
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/machine-god.git
-cd machine-god
+git clone https://github.com/yourusername/new-development-machine-setup.git
+cd new-development-machine-setup
 
 # Copy environment template and add your keys
 cp .env.example .env

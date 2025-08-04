@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Machine God - Development Tools Setup Script
+# New Development Machine Setup - Essential Tools Installation Script
 # Installs: Claude Code CLI, GitHub CLI, and Tailscale
 # Supports: macOS, Ubuntu/Debian, and other Linux distributions
 
@@ -25,21 +25,21 @@ print_banner() {
     cat << "EOF"
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
-║   ███╗   ███╗ █████╗  ██████╗██╗  ██╗██╗███╗   ██╗███████╗
-║   ████╗ ████║██╔══██╗██╔════╝██║  ██║██║████╗  ██║██╔════╝
-║   ██╔████╔██║███████║██║     ███████║██║██╔██╗ ██║█████╗  
-║   ██║╚██╔╝██║██╔══██║██║     ██╔══██║██║██║╚██╗██║██╔══╝  
-║   ██║ ╚═╝ ██║██║  ██║╚██████╗██║  ██║██║██║ ╚████║███████╗
-║   ╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝╚══════╝
+║     ███╗   ██╗███████╗██╗    ██╗    ██████╗ ███████╗██╗   ██╗
+║     ████╗  ██║██╔════╝██║    ██║    ██╔══██╗██╔════╝██║   ██║
+║     ██╔██╗ ██║█████╗  ██║ █╗ ██║    ██║  ██║█████╗  ██║   ██║
+║     ██║╚██╗██║██╔══╝  ██║███╗██║    ██║  ██║██╔══╝  ╚██╗ ██╔╝
+║     ██║ ╚████║███████╗╚███╔███╔╝    ██████╔╝███████╗ ╚████╔╝ 
+║     ╚═╝  ╚═══╝╚══════╝ ╚══╝╚══╝     ╚═════╝ ╚══════╝  ╚═══╝  
 ║                                                           ║
-║                    ██████╗  ██████╗ ██████╗               ║
-║                   ██╔════╝ ██╔═══██╗██╔══██╗              ║
-║                   ██║  ███╗██║   ██║██║  ██║              ║
-║                   ██║   ██║██║   ██║██║  ██║              ║
-║                   ╚██████╔╝╚██████╔╝██████╔╝              ║
-║                    ╚═════╝  ╚═════╝ ╚═════╝               ║
+║   ███████╗███████╗████████╗██╗   ██╗██████╗              ║
+║   ██╔════╝██╔════╝╚══██╔══╝██║   ██║██╔══██╗             ║
+║   ███████╗█████╗     ██║   ██║   ██║██████╔╝             ║
+║   ╚════██║██╔══╝     ██║   ██║   ██║██╔═══╝              ║
+║   ███████║███████╗   ██║   ╚██████╔╝██║                  ║
+║   ╚══════╝╚══════╝   ╚═╝    ╚═════╝ ╚═╝                  ║
 ║                                                           ║
-║            Development Environment Setup Script            ║
+║       Development Environment Auto-Configuration          ║
 ╚═══════════════════════════════════════════════════════════╝
 EOF
     echo -e "${NC}"
@@ -333,7 +333,7 @@ main() {
         esac
     done
     
-    print_info "Starting Machine God setup..."
+    print_info "Starting New Development Machine Setup..."
     echo ""
     
     # Load environment variables
@@ -366,7 +366,7 @@ main() {
     echo "  3. Run 'gh auth login' if not already configured"
     echo "  4. Run 'tailscale up' to connect to your tailnet"
     echo ""
-    print_success "Welcome to the Machine God environment!"
+    print_success "Welcome to your newly configured development environment!"
 }
 
 # Run main function
