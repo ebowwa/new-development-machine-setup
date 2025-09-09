@@ -138,16 +138,16 @@ get_environment_tools() {
     local env="$1"
     
     # Start with default tools
-    TOOLS_TO_INSTALL=("tailscale" "github-cli" "claude-code")
+    TOOLS_TO_INSTALL=("tailscale" "github-cli" "claude-code" "doppler")
     
     # Override based on environment if specified in YAML
     case "$env" in
         vps)
-            TOOLS_TO_INSTALL=("tailscale" "github-cli")
+            TOOLS_TO_INSTALL=("tailscale" "github-cli" "doppler")
             SKIP_TOOLS=("claude-code")
             ;;
         codespaces)
-            TOOLS_TO_INSTALL=("github-cli" "claude-code")
+            TOOLS_TO_INSTALL=("github-cli" "claude-code" "doppler")
             SKIP_TOOLS=("tailscale")
             ;;
         ci_cd)
@@ -470,6 +470,7 @@ main() {
                 echo "  --skip-claude     Skip Claude Code installation"
                 echo "  --skip-github     Skip GitHub CLI installation"
                 echo "  --skip-tailscale  Skip Tailscale installation"
+                echo "  --skip-doppler    Skip Doppler installation"
                 echo "  --list-envs       List available environments"
                 echo "  --help, -h        Show this help message"
                 exit 0
