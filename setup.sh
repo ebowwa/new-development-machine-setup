@@ -1,10 +1,14 @@
 #!/bin/bash
 
-# New Development Machine Setup - Essential Tools Installation Script
-# Installs: Claude Code CLI, GitHub CLI, and Tailscale
+# New Development Machine Setup - Dynamic Environment Configuration
+# Reads situations.yaml to determine what tools to install based on environment
 # Supports: macOS, Ubuntu/Debian, and other Linux distributions
 
 set -e  # Exit on error
+
+# Script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="${SCRIPT_DIR}/situations.yaml"
 
 # Colors for output
 RED='\033[0;31m'
@@ -56,6 +60,116 @@ load_env() {
     fi
 }
 
+# Parse YAML configuration (basic parser)
+parse_yaml() {
+    local file="$1"
+    local prefix="$2"
+    local s='[[:space:]]*'
+    local w='[a-zA-Z0-9_]*'
+    local fs=$(echo @|tr @ '\034')
+    
+    sed -ne "s|^\($s\)\($w\)$s:$s\"\(.*\)\"$s\$|\1$fs\2$fs\3|p" \
+        -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p" "$file" |
+    awk -F$fs '{
+        indent = length($1)/2;
+        vname[indent] = $2;
+        for (i in vname) {if (i > indent) {delete vname[i]}}
+        if (length($3) > 0) {
+            vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
+            printf("%s%s%s=%s\n", "'"$prefix"'",vn, $2, $3);
+        }
+    }'
+}
+
+# Detect current environment based on conditions in situations.yaml
+detect_environment() {
+    print_info "Detecting environment..."
+    
+    # Check for GitHub Codespaces
+    if [ -n "$CODESPACES" ] || [ -n "$GITHUB_CODESPACE_TOKEN" ]; then
+        DETECTED_ENV="codespaces"
+        print_success "Detected environment: GitHub Codespaces"
+        return
+    fi
+    
+    # Check for VPS/Node environment
+    if [ "$MACHINE_TYPE" = "vps" ] || [ "$IS_VPS" = "true" ]; then
+        DETECTED_ENV="vps"
+        print_success "Detected environment: VPS/Production Node"
+        return
+    fi
+    
+    # Check hostname patterns for VPS
+    HOSTNAME=$(hostname)
+    if [[ "$HOSTNAME" =~ ^(node-|vps-) ]]; then
+        DETECTED_ENV="vps"
+        print_success "Detected environment: VPS (by hostname)"
+        return
+    fi
+    
+    # Check for CI/CD environment
+    if [ "$CI" = "true" ] || [ -n "$GITHUB_ACTIONS" ] || [ -n "$JENKINS_HOME" ]; then
+        DETECTED_ENV="ci_cd"
+        print_success "Detected environment: CI/CD Pipeline"
+        return
+    fi
+    
+    # Check for container environment
+    if [ -f "/.dockerenv" ] || [ "$CONTAINER" = "true" ]; then
+        DETECTED_ENV="container"
+        print_success "Detected environment: Container"
+        return
+    fi
+    
+    # Check for local dev (macOS with VS Code)
+    if [[ "$OSTYPE" == "darwin"* ]] && command_exists code; then
+        DETECTED_ENV="local_dev"
+        print_success "Detected environment: Local Development Machine"
+        return
+    fi
+    
+    # Default to using all default tools
+    DETECTED_ENV="default"
+    print_info "Using default configuration"
+}
+
+# Get tools list for detected environment
+get_environment_tools() {
+    local env="$1"
+    
+    # Start with default tools
+    TOOLS_TO_INSTALL=("tailscale" "github-cli" "claude-code" "doppler")
+    
+    # Override based on environment if specified in YAML
+    case "$env" in
+        vps)
+            TOOLS_TO_INSTALL=("tailscale" "github-cli" "doppler")
+            SKIP_TOOLS=("claude-code")
+            ;;
+        codespaces)
+            TOOLS_TO_INSTALL=("github-cli" "claude-code" "doppler")
+            SKIP_TOOLS=("tailscale")
+            ;;
+        ci_cd)
+            TOOLS_TO_INSTALL=("github-cli")
+            SKIP_TOOLS=("tailscale" "claude-code")
+            ;;
+        container)
+            TOOLS_TO_INSTALL=("github-cli")
+            SKIP_TOOLS=("tailscale" "claude-code")
+            ;;
+        local_dev|default)
+            TOOLS_TO_INSTALL=("tailscale" "github-cli" "claude-code")
+            SKIP_TOOLS=()
+            ;;
+    esac
+    
+    print_info "Tools to install: ${TOOLS_TO_INSTALL[*]}"
+    if [ ${#SKIP_TOOLS[@]} -gt 0 ]; then
+        print_info "Skipping tools: ${SKIP_TOOLS[*]}"
+    fi
+}
+
 # Detect OS
 detect_os() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -100,10 +214,31 @@ install_homebrew() {
     fi
 }
 
+# Check if tool should be installed
+should_install_tool() {
+    local tool="$1"
+    
+    # Check if tool is in skip list
+    for skip in "${SKIP_TOOLS[@]}"; do
+        if [ "$skip" = "$tool" ]; then
+            return 1
+        fi
+    done
+    
+    # Check if tool is in install list
+    for install in "${TOOLS_TO_INSTALL[@]}"; do
+        if [ "$install" = "$tool" ]; then
+            return 0
+        fi
+    done
+    
+    return 1
+}
+
 # Install Claude Code CLI
 install_claude() {
-    if [ "${SKIP_CLAUDE}" == "true" ]; then
-        print_info "Skipping Claude Code installation"
+    if ! should_install_tool "claude-code"; then
+        print_info "Skipping Claude Code installation (not needed for $DETECTED_ENV)"
         return
     fi
     
@@ -156,8 +291,8 @@ install_claude() {
 
 # Install GitHub CLI
 install_github_cli() {
-    if [ "${SKIP_GITHUB}" == "true" ]; then
-        print_info "Skipping GitHub CLI installation"
+    if ! should_install_tool "github-cli"; then
+        print_info "Skipping GitHub CLI installation (not needed for $DETECTED_ENV)"
         return
     fi
     
@@ -214,8 +349,8 @@ install_github_cli() {
 
 # Install Tailscale
 install_tailscale() {
-    if [ "${SKIP_TAILSCALE}" == "true" ]; then
-        print_info "Skipping Tailscale installation"
+    if ! should_install_tool "tailscale"; then
+        print_info "Skipping Tailscale installation (not needed for $DETECTED_ENV)"
         return
     fi
     
@@ -296,6 +431,30 @@ verify_installations() {
     fi
 }
 
+# Run additional setup functions based on environment
+run_additional_setup() {
+    local env="$1"
+    
+    case "$env" in
+        vps)
+            print_info "Running VPS-specific setup..."
+            # Add VPS-specific setup here
+            ;;
+        codespaces)
+            print_info "Running Codespaces-specific setup..."
+            # Configure git aliases for Codespaces
+            git config --global alias.co checkout 2>/dev/null || true
+            git config --global alias.br branch 2>/dev/null || true
+            git config --global alias.ci commit 2>/dev/null || true
+            git config --global alias.st status 2>/dev/null || true
+            ;;
+        local_dev)
+            print_info "Running local development setup..."
+            # Add local dev specific setup here
+            ;;
+    esac
+}
+
 # Main installation flow
 main() {
     print_banner
@@ -307,22 +466,38 @@ main() {
                 echo "Usage: $0 [OPTIONS]"
                 echo ""
                 echo "Options:"
+                echo "  --env ENV         Force specific environment (vps, codespaces, local_dev, ci_cd, container)"
                 echo "  --skip-claude     Skip Claude Code installation"
                 echo "  --skip-github     Skip GitHub CLI installation"
                 echo "  --skip-tailscale  Skip Tailscale installation"
+                echo "  --skip-doppler    Skip Doppler installation"
+                echo "  --list-envs       List available environments"
                 echo "  --help, -h        Show this help message"
                 exit 0
                 ;;
+            --env)
+                FORCE_ENV="$2"
+                shift 2
+                ;;
+            --list-envs)
+                echo "Available environments:"
+                echo "  vps         - VPS/Production nodes"
+                echo "  codespaces  - GitHub Codespaces"
+                echo "  local_dev   - Local development machine"
+                echo "  ci_cd       - CI/CD pipeline"
+                echo "  container   - Docker/container environment"
+                exit 0
+                ;;
             --skip-claude)
-                export SKIP_CLAUDE=true
+                SKIP_TOOLS+=("claude-code")
                 shift
                 ;;
             --skip-github)
-                export SKIP_GITHUB=true
+                SKIP_TOOLS+=("github-cli")
                 shift
                 ;;
             --skip-tailscale)
-                export SKIP_TAILSCALE=true
+                SKIP_TOOLS+=("tailscale")
                 shift
                 ;;
             *)
@@ -333,14 +508,36 @@ main() {
         esac
     done
     
-    print_info "Starting New Development Machine Setup..."
+    print_info "Starting Dynamic Development Environment Setup..."
     echo ""
+    
+    # Check if configuration file exists
+    if [ ! -f "$CONFIG_FILE" ]; then
+        print_warning "Configuration file not found: $CONFIG_FILE"
+        print_info "Using default configuration"
+    fi
     
     # Load environment variables
     load_env
     
     # Detect operating system
     detect_os
+    
+    # Detect or use forced environment
+    if [ -n "$FORCE_ENV" ]; then
+        DETECTED_ENV="$FORCE_ENV"
+        print_info "Using forced environment: $DETECTED_ENV"
+    else
+        detect_environment
+    fi
+    
+    # Get tools list for detected environment
+    get_environment_tools "$DETECTED_ENV"
+    
+    echo ""
+    print_info "Environment: $DETECTED_ENV"
+    print_info "OS: $OS"
+    echo ""
     
     # Install Homebrew on macOS
     if [[ "$OS" == "macos" ]]; then
@@ -355,18 +552,43 @@ main() {
     install_tailscale
     echo ""
     
+    # Run additional setup for environment
+    run_additional_setup "$DETECTED_ENV"
+    echo ""
+    
     # Verify all installations
     verify_installations
     
     print_info "Setup complete! 🚀"
     echo ""
-    print_info "Next steps:"
-    echo "  1. Copy .env.example to .env and add your API keys"
-    echo "  2. Run 'claude auth login' if not already configured"
-    echo "  3. Run 'gh auth login' if not already configured"
-    echo "  4. Run 'tailscale up' to connect to your tailnet"
+    print_info "Environment configured: $DETECTED_ENV"
     echo ""
-    print_success "Welcome to your newly configured development environment!"
+    print_info "Next steps:"
+    
+    # Environment-specific next steps
+    case "$DETECTED_ENV" in
+        vps)
+            echo "  1. Configure Tailscale: sudo tailscale up"
+            echo "  2. Setup GitHub deploy keys if needed"
+            ;;
+        codespaces)
+            echo "  1. Run 'gh auth login' if not already configured"
+            echo "  2. Configure Claude: claude auth login"
+            ;;
+        local_dev)
+            echo "  1. Copy .env.example to .env and add your API keys"
+            echo "  2. Run 'claude auth login' if not already configured"
+            echo "  3. Run 'gh auth login' if not already configured"
+            echo "  4. Run 'tailscale up' to connect to your tailnet"
+            ;;
+        *)
+            echo "  1. Copy .env.example to .env and add your API keys"
+            echo "  2. Configure the installed tools as needed"
+            ;;
+    esac
+    
+    echo ""
+    print_success "Your $DETECTED_ENV environment is ready!"
 }
 
 # Run main function
