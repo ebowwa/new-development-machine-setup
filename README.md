@@ -1,4 +1,4 @@
-# New Development Machine Setup 🚀
+# Dynamic Development Environment Setup 🚀
 
 ```
 ╔═══════════════════════════════════════════════════════════╗
@@ -17,139 +17,211 @@
 ║   ███████║███████╗   ██║   ╚██████╔╝██║                  ║
 ║   ╚══════╝╚══════╝   ╚═╝    ╚═════╝ ╚═╝                  ║
 ║                                                           ║
-║       Development Environment Auto-Configuration          ║
+║       Dynamic Environment Auto-Configuration              ║
 ╚═══════════════════════════════════════════════════════════╝
 ```
 
-Automated setup script for essential development tools across multiple platforms.
+Environment-aware setup system that automatically detects your context (VPS, Codespaces, local dev) and installs only the tools you need.
 
-## What it installs
+## 🎯 Smart Environment Detection
 
-- **Claude Code CLI** - Anthropic's official CLI for Claude
-- **GitHub CLI** - Command-line interface for GitHub
+The setup script automatically detects your environment and configures it appropriately:
+
+| Environment | Auto-Detection | Tools Installed | Tools Skipped |
+|------------|---------------|-----------------|---------------|
+| **VPS/Production** | Hostname pattern, env vars | Tailscale, GitHub CLI, Doppler | Claude Code |
+| **GitHub Codespaces** | CODESPACES env var | GitHub CLI, Claude Code, Doppler | Tailscale |
+| **Local Development** | macOS + VS Code | All tools | None |
+| **CI/CD Pipeline** | CI env vars | GitHub CLI | Others |
+| **Container/Docker** | /.dockerenv file | GitHub CLI | Others |
+
+## 🛠️ Tools Included
+
+- **Claude Code CLI** - Anthropic's AI coding assistant
+- **GitHub CLI** (`gh`) - GitHub from the command line
 - **Tailscale** - Zero-config VPN for secure networking
+- **Doppler** - SecretOps platform for environment variables
 
-## Quick Start
+## 🚀 Quick Start
 
 ```bash
-# Clone the repository
+# Clone and run - it auto-detects your environment!
 git clone https://github.com/yourusername/new-development-machine-setup.git
 cd new-development-machine-setup
-
-# Copy environment template and add your keys
-cp .env.example .env
-# Edit .env with your favorite editor
-
-# Run the setup script
 ./setup.sh
 ```
 
-## Prerequisites
+## 📋 Prerequisites
 
-- **macOS**: Command Line Tools (will prompt to install if missing)
+- **macOS**: Command Line Tools (auto-prompts if missing)
 - **Linux**: `curl` and `sudo` access
 - **All platforms**: Internet connection
 
-## Configuration
+## ⚙️ Configuration
 
-1. Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Add your API keys and tokens:
-   - **ANTHROPIC_API_KEY**: 
-     - If you have a Claude Pro/Team subscription, you can skip this! Just run `claude auth login` after installation
-     - For API access: Get from [Anthropic Console](https://console.anthropic.com/settings/keys)
-   - **GITHUB_TOKEN**: Generate at [GitHub Settings](https://github.com/settings/tokens)
-   - **TAILSCALE_AUTH_KEY**: (Optional) Get from [Tailscale Admin](https://login.tailscale.com/admin/settings/keys)
-
-## Usage
-
-### Basic Installation
+### Basic Setup
 ```bash
+# Optional: Add your API keys for automated config
+cp .env.example .env
+nano .env  # Add your tokens
+
+# Run setup - auto-detects environment
 ./setup.sh
+```
+
+### Force Specific Environment
+```bash
+# VPS/Production nodes
+./setup.sh --env vps
+
+# GitHub Codespaces
+./setup.sh --env codespaces
+
+# Local development
+./setup.sh --env local_dev
+
+# List all environments
+./setup.sh --list-envs
 ```
 
 ### Skip Specific Tools
 ```bash
-# Skip Claude installation
 ./setup.sh --skip-claude
+./setup.sh --skip-github
+./setup.sh --skip-tailscale
+./setup.sh --skip-doppler
 
-# Skip multiple tools
-./setup.sh --skip-github --skip-tailscale
+# Combine options
+./setup.sh --env vps --skip-doppler
 ```
 
-### Environment Variables
-You can also control installation via environment variables in your `.env` file:
+## 🔑 Environment Variables
+
+Create a `.env` file with your tokens for automated configuration:
+
 ```bash
-SKIP_CLAUDE=true
-SKIP_GITHUB=true
-SKIP_TAILSCALE=true
+# GitHub Personal Access Token
+GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+
+# Anthropic API Key (optional for Claude Pro/Team users)
+ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
+
+# Tailscale Auth Key (for headless setup)
+TAILSCALE_AUTH_KEY=tskey-auth-xxxxxxxxxxxx
+
+# Doppler Service Token
+DOPPLER_TOKEN=dp.st.xxxxxxxxxxxx
 ```
 
-## Platform Support
+## 🎨 Customization
 
-| Platform | Claude Code | GitHub CLI | Tailscale |
-|----------|------------|------------|-----------|
-| macOS    | ✅         | ✅         | ✅        |
-| Ubuntu   | ✅         | ✅         | ✅        |
-| Debian   | ✅         | ✅         | ✅        |
-| RHEL/CentOS | ⚠️      | ✅         | ✅        |
-| Other Linux | ⚠️      | ⚠️         | ⚠️        |
+### Add Custom Environment
 
-✅ = Fully automated
-⚠️ = May require manual steps
+Edit `situations.yaml`:
 
-## Post-Installation
+```yaml
+environments:
+  my_custom_env:
+    description: "My special environment"
+    detect:
+      - env: "MY_ENV=true"
+      - hostname_pattern: "custom-*"
+    tools:
+      - github-cli
+      - doppler
+    skip:
+      - claude-code
+      - tailscale
+```
 
-After running the setup script:
+### Add New Tools
 
-1. **Claude Code**:
-   ```bash
-   claude auth login
-   # For Claude Pro/Team subscribers: Follow the browser authentication
-   # For API key users: Use --key flag or paste when prompted
-   ```
+Edit `situations.yaml`:
 
-2. **GitHub CLI**:
-   ```bash
-   gh auth login
-   ```
+```yaml
+tools:
+  my_tool:
+    name: "My Tool"
+    check_command: "mytool"
+    install_methods:
+      macos: "brew install mytool"
+      debian: "apt-get install mytool"
+    config_env: "MY_TOOL_TOKEN"
+```
 
-3. **Tailscale**:
-   ```bash
-   tailscale up
-   ```
+## 📚 Use Cases
 
-## Troubleshooting
+### VPS/Production Nodes
+```bash
+MACHINE_TYPE=vps ./setup.sh
+```
+- ✅ Tailscale for secure networking
+- ✅ GitHub CLI for deployments
+- ✅ Doppler for secrets management
+- ❌ Claude Code (not needed on servers)
 
-### macOS
-- If Homebrew installation fails, install Xcode Command Line Tools:
-  ```bash
-  xcode-select --install
-  ```
+### GitHub Codespaces
+Automatically detected and configured:
+- ✅ Claude Code for AI assistance
+- ✅ GitHub CLI (essential)
+- ✅ Doppler for dev secrets
+- ❌ Tailscale (not needed)
 
-### Linux
-- Ensure you have `sudo` privileges
-- For Claude Code on non-Debian systems, Node.js will be installed automatically
+### Local Development
+Full setup for your workstation:
+- ✅ All tools installed
+- ✅ Complete configuration
 
-### All Platforms
-- Check the `.env` file exists and contains valid keys
-- Ensure you have a stable internet connection
-- Run with `bash -x setup.sh` for verbose output
+## 🔧 Post-Installation
 
-## Security Notes
+### Claude Code
+```bash
+claude auth login  # Browser auth for Pro/Team users
+```
 
-- Never commit your `.env` file (it's in `.gitignore`)
-- Keep your API keys and tokens secure
-- Rotate tokens regularly
-- Use Tailscale auth keys with appropriate expiration
+### GitHub CLI
+```bash
+gh auth login
+```
 
-## License
+### Tailscale
+```bash
+sudo tailscale up  # Linux/VPS
+tailscale up       # macOS
+```
 
-MIT
+### Doppler
+```bash
+doppler login
+# Or with service token:
+doppler configure set token $DOPPLER_TOKEN --scope /
+```
 
-## Contributing
+## 🐛 Troubleshooting
 
-Pull requests welcome! Please test on your target platform before submitting.
+- **Environment not detected?** Use `--env` flag to force
+- **Tool already installed?** Script checks and skips
+- **Permission errors?** Ensure sudo access on Linux
+- **API keys not working?** Check `.env` file formatting
+
+## 📝 Files
+
+- `setup.sh` - Main installation script
+- `situations.yaml` - Environment and tool configurations
+- `.env.example` - Template for API keys
+- `.env` - Your API keys (git-ignored)
+
+## 🔒 Security
+
+- Never commit `.env` files
+- Use environment-specific tokens
+- Rotate credentials regularly
+- Review `situations.yaml` before running
+
+## 📄 License
+
+MIT - Use freely for your own setups!
+
+## 🤝 Contributing
+
+PRs welcome! Please test on target platforms.
