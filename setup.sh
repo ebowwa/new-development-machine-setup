@@ -1,29 +1,62 @@
 #!/bin/bash
 
-# New Development Machine Setup - Dynamic Environment Configuration
-# Reads situations.yaml to determine what tools to install based on environment
-# Supports: macOS, Ubuntu/Debian, and other Linux distributions
+# ============================================================================
+# Dynamic Development Environment Setup Script
+# ============================================================================
+# Purpose: Intelligently configures development tools based on detected environment
+# Author: Your automated setup assistant
+# Version: 2.0
+# 
+# This script automatically detects your environment (VPS, Codespaces, local dev)
+# and installs only the tools appropriate for that context, avoiding unnecessary
+# bloat while ensuring you have everything needed for your specific use case.
+#
+# Supported Environments:
+#   - VPS/Production nodes
+#   - GitHub Codespaces
+#   - Local development machines
+#   - CI/CD pipelines
+#   - Docker containers
+#
+# Supported Operating Systems:
+#   - macOS (via Homebrew)
+#   - Ubuntu/Debian Linux
+#   - RedHat/CentOS Linux
+# ============================================================================
 
 set -e  # Exit on error
 
-# Script directory
+# ============================================================================
+# Configuration and Setup
+# ============================================================================
+
+# Script directory and config file paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/situations.yaml"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# ============================================================================
+# Color Definitions for Terminal Output
+# ============================================================================
+RED='\033[0;31m'    # Error messages
+GREEN='\033[0;32m'  # Success messages
+YELLOW='\033[1;33m' # Warnings and prompts
+BLUE='\033[0;34m'   # Information and headers
+NC='\033[0m'        # No Color (reset)
 
-# Print colored output
+# ============================================================================
+# Utility Functions for Formatted Output
+# ============================================================================
 print_success() { echo -e "${GREEN}✓${NC} $1"; }
 print_error() { echo -e "${RED}✗${NC} $1"; }
 print_info() { echo -e "${BLUE}ℹ${NC} $1"; }
 print_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
 
-# ASCII Art Banner
+# ============================================================================
+# Display Functions
+# ============================================================================
+
+# Display the welcome banner with ASCII art
+# Shows a stylized "NEW DEV SETUP" logo to make the script feel professional
 print_banner() {
     echo -e "${BLUE}"
     cat << "EOF"
@@ -49,10 +82,17 @@ EOF
     echo -e "${NC}"
 }
 
-# Load environment variables
+# ============================================================================
+# Environment Configuration
+# ============================================================================
+
+# Load environment variables from .env file
+# This allows users to pre-configure their API keys and tokens for automated setup
+# Reads from .env if it exists, otherwise shows a warning about .env.example
 load_env() {
     if [ -f .env ]; then
         print_info "Loading environment variables from .env"
+        # Export all non-comment lines from .env file
         export $(cat .env | grep -v '^#' | xargs)
     elif [ -f .env.example ]; then
         print_warning "No .env file found. Copy .env.example to .env and add your keys."
@@ -60,7 +100,13 @@ load_env() {
     fi
 }
 
-# Parse YAML configuration (basic parser)
+# ============================================================================
+# YAML Configuration Parser
+# ============================================================================
+
+# Basic YAML parser for reading situations.yaml configuration
+# Converts YAML key-value pairs into shell variables with proper prefixing
+# Note: This is a simple parser that handles basic YAML structure
 parse_yaml() {
     local file="$1"
     local prefix="$2"
@@ -81,25 +127,34 @@ parse_yaml() {
     }'
 }
 
-# Detect current environment based on conditions in situations.yaml
+# ============================================================================
+# Environment Detection Logic
+# ============================================================================
+
+# Intelligently detect the current environment based on various indicators
+# Priority order: Codespaces > VPS > CI/CD > Container > Local Dev
+# This ensures we pick the most specific environment when multiple conditions match
 detect_environment() {
     print_info "Detecting environment..."
     
-    # Check for GitHub Codespaces
+    # Priority 1: Check for GitHub Codespaces
+    # Codespaces sets specific environment variables we can detect
     if [ -n "$CODESPACES" ] || [ -n "$GITHUB_CODESPACE_TOKEN" ]; then
         DETECTED_ENV="codespaces"
         print_success "Detected environment: GitHub Codespaces"
         return
     fi
     
-    # Check for VPS/Node environment
+    # Priority 2: Check for VPS/Production Node environment
+    # Can be explicitly set via MACHINE_TYPE or IS_VPS environment variables
     if [ "$MACHINE_TYPE" = "vps" ] || [ "$IS_VPS" = "true" ]; then
         DETECTED_ENV="vps"
         print_success "Detected environment: VPS/Production Node"
         return
     fi
     
-    # Check hostname patterns for VPS
+    # Priority 3: Check hostname patterns for VPS
+    # Many VPS providers use specific hostname patterns
     HOSTNAME=$(hostname)
     if [[ "$HOSTNAME" =~ ^(node-|vps-) ]]; then
         DETECTED_ENV="vps"
@@ -107,58 +162,72 @@ detect_environment() {
         return
     fi
     
-    # Check for CI/CD environment
+    # Priority 4: Check for CI/CD environment
+    # Most CI systems set the CI environment variable
     if [ "$CI" = "true" ] || [ -n "$GITHUB_ACTIONS" ] || [ -n "$JENKINS_HOME" ]; then
         DETECTED_ENV="ci_cd"
         print_success "Detected environment: CI/CD Pipeline"
         return
     fi
     
-    # Check for container environment
+    # Priority 5: Check for container/Docker environment
+    # Docker creates /.dockerenv file in containers
     if [ -f "/.dockerenv" ] || [ "$CONTAINER" = "true" ]; then
         DETECTED_ENV="container"
         print_success "Detected environment: Container"
         return
     fi
     
-    # Check for local dev (macOS with VS Code)
+    # Priority 6: Check for local development machine
+    # macOS with VS Code installed is likely a dev machine
     if [[ "$OSTYPE" == "darwin"* ]] && command_exists code; then
         DETECTED_ENV="local_dev"
         print_success "Detected environment: Local Development Machine"
         return
     fi
     
-    # Default to using all default tools
+    # Fallback: Use default configuration if no specific environment detected
     DETECTED_ENV="default"
     print_info "Using default configuration"
 }
 
-# Get tools list for detected environment
+# ============================================================================
+# Tool Selection Based on Environment
+# ============================================================================
+
+# Determine which tools to install based on the detected environment
+# Each environment has a specific set of tools that make sense for its use case
+# This prevents installing unnecessary tools (e.g., Claude Code on CI/CD systems)
 get_environment_tools() {
     local env="$1"
     
-    # Start with default tools
+    # Start with default tool set (all tools)
     TOOLS_TO_INSTALL=("tailscale" "github-cli" "claude-code" "doppler")
     
-    # Override based on environment if specified in YAML
+    # Override tool selection based on specific environment needs
     case "$env" in
         vps)
+            # VPS needs all tools including Claude for remote development
             TOOLS_TO_INSTALL=("tailscale" "github-cli" "doppler" "claude-code")
             SKIP_TOOLS=()
             ;;
         codespaces)
+            # Codespaces doesn't need Tailscale (GitHub handles networking)
             TOOLS_TO_INSTALL=("github-cli" "claude-code" "doppler")
             SKIP_TOOLS=("tailscale")
             ;;
         ci_cd)
+            # CI/CD only needs GitHub CLI for releases/deployments
             TOOLS_TO_INSTALL=("github-cli")
             SKIP_TOOLS=("tailscale" "claude-code")
             ;;
         container)
+            # Containers typically only need GitHub CLI
             TOOLS_TO_INSTALL=("github-cli")
             SKIP_TOOLS=("tailscale" "claude-code")
             ;;
         local_dev|default)
+            # Local dev and default get everything
             TOOLS_TO_INSTALL=("tailscale" "github-cli" "claude-code" "doppler")
             SKIP_TOOLS=()
             ;;
@@ -170,12 +239,18 @@ get_environment_tools() {
     fi
 }
 
-# Detect OS
+# ============================================================================
+# Operating System Detection
+# ============================================================================
+
+# Detect the operating system to determine package manager and installation methods
+# Supports macOS (Homebrew), Debian/Ubuntu (apt), and RedHat/CentOS (yum/dnf)
 detect_os() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         OS="macos"
         print_info "Detected OS: macOS"
     elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Check for specific Linux distributions
         if [ -f /etc/debian_version ]; then
             OS="debian"
             print_info "Detected OS: Debian/Ubuntu"
@@ -192,18 +267,29 @@ detect_os() {
     fi
 }
 
-# Check if command exists
+# ============================================================================
+# Utility Functions
+# ============================================================================
+
+# Check if a command/program is installed and available in PATH
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Install Homebrew (macOS)
+# ============================================================================
+# Package Manager Installation
+# ============================================================================
+
+# Install Homebrew package manager on macOS
+# Homebrew is required for installing most tools on macOS
+# Also handles PATH setup for Apple Silicon Macs (/opt/homebrew)
 install_homebrew() {
     if ! command_exists brew; then
         print_info "Installing Homebrew..."
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         
-        # Add Homebrew to PATH for Apple Silicon Macs
+        # Add Homebrew to PATH for Apple Silicon Macs (M1/M2/M3)
+        # Intel Macs use /usr/local, Apple Silicon uses /opt/homebrew
         if [[ -d "/opt/homebrew" ]]; then
             echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
             eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -214,29 +300,41 @@ install_homebrew() {
     fi
 }
 
-# Check if tool should be installed
+# ============================================================================
+# Tool Installation Control
+# ============================================================================
+
+# Determine if a specific tool should be installed based on environment
+# Returns 0 (true) if tool should be installed, 1 (false) if it should be skipped
 should_install_tool() {
     local tool="$1"
     
-    # Check if tool is in skip list
+    # First check if tool is explicitly in skip list
     for skip in "${SKIP_TOOLS[@]}"; do
         if [ "$skip" = "$tool" ]; then
-            return 1
+            return 1  # Don't install
         fi
     done
     
-    # Check if tool is in install list
+    # Then check if tool is in install list
     for install in "${TOOLS_TO_INSTALL[@]}"; do
         if [ "$install" = "$tool" ]; then
-            return 0
+            return 0  # Do install
         fi
     done
     
-    return 1
+    return 1  # Default to not installing if not in list
 }
 
-# Install Claude Code CLI
+# ============================================================================
+# Tool Installation Functions
+# ============================================================================
+
+# Install Claude Code CLI - Anthropic's AI coding assistant
+# Provides AI-powered code generation, refactoring, and assistance
+# Installation method varies by OS: Homebrew on macOS, npm on Linux
 install_claude() {
+    # Skip if not needed for this environment
     if ! should_install_tool "claude-code"; then
         print_info "Skipping Claude Code installation (not needed for $DETECTED_ENV)"
         return
@@ -257,14 +355,15 @@ install_claude() {
                 brew install claude-code
                 ;;
             debian|linux)
-                # Check Node.js version if installed
+                # Claude Code requires Node.js 18+ 
+                # Check and upgrade Node.js if needed before installing
                 if command_exists node; then
                     NODE_VERSION=$(node --version | sed 's/v//' | cut -d. -f1)
                     if [ "$NODE_VERSION" -lt 18 ]; then
                         print_warning "Node.js version is too old (v$NODE_VERSION). Claude Code requires Node.js 18+"
                         print_info "Installing Node.js 20 LTS..."
                         
-                        # Install Node.js 20 LTS
+                        # Install Node.js 20 LTS from NodeSource repository
                         curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
                         sudo apt-get install -y nodejs
                     fi
@@ -275,7 +374,7 @@ install_claude() {
                     sudo apt-get install -y nodejs
                 fi
                 
-                # Install Claude Code via npm
+                # Install Claude Code globally via npm
                 print_info "Installing Claude Code via npm..."
                 npm install -g @anthropic-ai/claude-code
                 ;;
@@ -300,8 +399,11 @@ install_claude() {
     print_success "Claude Code installation complete"
 }
 
-# Install GitHub CLI
+# Install GitHub CLI - Command line interface for GitHub
+# Essential for CI/CD, releases, PR management, and GitHub operations
+# Supports authentication, repo management, and workflow automation
 install_github_cli() {
+    # Skip if not needed for this environment
     if ! should_install_tool "github-cli"; then
         print_info "Skipping GitHub CLI installation (not needed for $DETECTED_ENV)"
         return
@@ -358,8 +460,11 @@ install_github_cli() {
     print_success "GitHub CLI installation complete"
 }
 
-# Install Doppler CLI
+# Install Doppler CLI - SecretOps platform for managing environment variables
+# Provides centralized secret management, environment syncing, and team collaboration
+# Eliminates the need for .env files in production by pulling secrets at runtime
 install_doppler() {
+    # Skip if not needed for this environment
     if ! should_install_tool "doppler"; then
         print_info "Skipping Doppler installation (not needed for $DETECTED_ENV)"
         return
@@ -424,8 +529,11 @@ install_doppler() {
     print_success "Doppler installation complete"
 }
 
-# Install Tailscale
+# Install Tailscale - Zero-config VPN for secure networking
+# Creates encrypted point-to-point connections between devices
+# Perfect for accessing development servers, databases, and internal services securely
 install_tailscale() {
+    # Skip if not needed for this environment
     if ! should_install_tool "tailscale"; then
         print_info "Skipping Tailscale installation (not needed for $DETECTED_ENV)"
         return
@@ -469,7 +577,12 @@ install_tailscale() {
     print_success "Tailscale installation complete"
 }
 
-# Verify installations
+# ============================================================================
+# Installation Verification
+# ============================================================================
+
+# Verify that all tools were installed successfully
+# Checks each tool's availability and version, reporting any failures
 verify_installations() {
     print_info "Verifying installations..."
     echo ""
@@ -524,18 +637,24 @@ verify_installations() {
     fi
 }
 
-# Run additional setup functions based on environment
+# ============================================================================
+# Environment-Specific Configuration
+# ============================================================================
+
+# Run additional setup tasks specific to each environment
+# This allows for custom configuration beyond just tool installation
 run_additional_setup() {
     local env="$1"
     
     case "$env" in
         vps)
             print_info "Running VPS-specific setup..."
+            # VPS might need specific firewall rules, systemd services, etc.
             # Add VPS-specific setup here
             ;;
         codespaces)
             print_info "Running Codespaces-specific setup..."
-            # Configure git aliases for Codespaces
+            # Configure useful git aliases for Codespaces environment
             git config --global alias.co checkout 2>/dev/null || true
             git config --global alias.br branch 2>/dev/null || true
             git config --global alias.ci commit 2>/dev/null || true
@@ -543,16 +662,24 @@ run_additional_setup() {
             ;;
         local_dev)
             print_info "Running local development setup..."
+            # Local dev might need IDE configs, desktop shortcuts, etc.
             # Add local dev specific setup here
             ;;
     esac
 }
 
-# Main installation flow
+# ============================================================================
+# Main Installation Flow
+# ============================================================================
+
+# Main entry point for the script
+# Handles argument parsing, environment detection, and orchestrates the installation
 main() {
     print_banner
     
-    # Parse arguments
+    # ========================================
+    # Parse Command Line Arguments
+    # ========================================
     while [[ $# -gt 0 ]]; do
         case $1 in
             --help|-h)
@@ -605,19 +732,23 @@ main() {
         esac
     done
     
+    # ========================================
+    # Initial Setup and Detection
+    # ========================================
+    
     print_info "Starting Dynamic Development Environment Setup..."
     echo ""
     
-    # Check if configuration file exists
+    # Check if configuration file exists (optional - we have defaults)
     if [ ! -f "$CONFIG_FILE" ]; then
         print_warning "Configuration file not found: $CONFIG_FILE"
         print_info "Using default configuration"
     fi
     
-    # Load environment variables
+    # Load environment variables from .env file if present
     load_env
     
-    # Detect operating system
+    # Detect the operating system (macOS, Linux, etc.)
     detect_os
     
     # Detect or use forced environment
@@ -625,10 +756,11 @@ main() {
         DETECTED_ENV="$FORCE_ENV"
         print_info "Using forced environment: $DETECTED_ENV"
     else
+        # Auto-detect environment based on system characteristics
         detect_environment
     fi
     
-    # Get tools list for detected environment
+    # Get the appropriate tool list for detected environment
     get_environment_tools "$DETECTED_ENV"
     
     echo ""
@@ -636,27 +768,173 @@ main() {
     print_info "OS: $OS"
     echo ""
     
-    # Install Homebrew on macOS
+    # ========================================
+    # Display Installation Plan
+    # ========================================
+    # Show user what will be installed before making any changes
+    # This provides transparency and allows cancellation if needed
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BLUE}Installation Sequence:${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    local step=1
+    
+    # Show Homebrew if macOS
     if [[ "$OS" == "macos" ]]; then
-        install_homebrew
+        echo -e "  ${YELLOW}$step.${NC} Homebrew Package Manager"
+        if command_exists brew; then
+            echo -e "     ${GREEN}✓${NC} Already installed"
+        else
+            echo -e "     ${BLUE}→${NC} Will install"
+        fi
+        ((step++))
+        echo ""
     fi
     
-    # Install tools
-    install_claude
-    echo ""
-    install_github_cli
-    echo ""
-    install_doppler
-    echo ""
-    install_tailscale
+    # Show each tool that will be installed
+    for tool in "${TOOLS_TO_INSTALL[@]}"; do
+        case "$tool" in
+            claude-code)
+                echo -e "  ${YELLOW}$step.${NC} Claude Code CLI"
+                if command_exists claude; then
+                    echo -e "     ${GREEN}✓${NC} Already installed (will check for updates)"
+                else
+                    echo -e "     ${BLUE}→${NC} Will install via $([ "$OS" = "macos" ] && echo "Homebrew" || echo "npm")"
+                fi
+                if [ -n "$ANTHROPIC_API_KEY" ]; then
+                    echo -e "     ${BLUE}→${NC} Will auto-configure with API key"
+                fi
+                ;;
+            github-cli)
+                echo -e "  ${YELLOW}$step.${NC} GitHub CLI"
+                if command_exists gh; then
+                    echo -e "     ${GREEN}✓${NC} Already installed (will check for updates)"
+                else
+                    echo -e "     ${BLUE}→${NC} Will install"
+                fi
+                if [ -n "$GITHUB_TOKEN" ]; then
+                    echo -e "     ${BLUE}→${NC} Will auto-configure with token"
+                fi
+                ;;
+            doppler)
+                echo -e "  ${YELLOW}$step.${NC} Doppler SecretOps"
+                if command_exists doppler; then
+                    echo -e "     ${GREEN}✓${NC} Already installed (will check for updates)"
+                else
+                    echo -e "     ${BLUE}→${NC} Will install"
+                fi
+                if [ -n "$DOPPLER_TOKEN" ]; then
+                    echo -e "     ${BLUE}→${NC} Will auto-configure with token"
+                fi
+                ;;
+            tailscale)
+                echo -e "  ${YELLOW}$step.${NC} Tailscale VPN"
+                if command_exists tailscale; then
+                    echo -e "     ${GREEN}✓${NC} Already installed"
+                else
+                    echo -e "     ${BLUE}→${NC} Will install"
+                fi
+                if [ -n "$TAILSCALE_AUTH_KEY" ]; then
+                    echo -e "     ${BLUE}→${NC} Will auto-configure with auth key"
+                fi
+                ;;
+        esac
+        ((step++))
+        echo ""
+    done
+    
+    # Show skipped tools if any
+    if [ ${#SKIP_TOOLS[@]} -gt 0 ]; then
+        echo -e "${YELLOW}Skipping:${NC}"
+        for skip in "${SKIP_TOOLS[@]}"; do
+            case "$skip" in
+                claude-code) echo -e "  ${RED}✗${NC} Claude Code CLI" ;;
+                github-cli) echo -e "  ${RED}✗${NC} GitHub CLI" ;;
+                doppler) echo -e "  ${RED}✗${NC} Doppler SecretOps" ;;
+                tailscale) echo -e "  ${RED}✗${NC} Tailscale VPN" ;;
+            esac
+        done
+        echo ""
+    fi
+    
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    # Run additional setup for environment
+    # ========================================
+    # User Confirmation
+    # ========================================
+    # Ask for user confirmation before making system changes
+    read -p "$(echo -e ${YELLOW}"Proceed with installation? [Y/n]: "${NC})" -n 1 -r
+    echo ""
+    if [[ ! $REPLY =~ ^[Yy]$ ]] && [ -n "$REPLY" ]; then
+        print_info "Installation cancelled"
+        exit 0
+    fi
+    echo ""
+    
+    # ========================================
+    # Package Manager Setup (macOS only)
+    # ========================================
+    # Install Homebrew on macOS
+    if [[ "$OS" == "macos" ]]; then
+        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${BLUE}Step 1/${#TOOLS_TO_INSTALL[@]}: Package Manager${NC}"
+        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        install_homebrew
+        echo ""
+    fi
+    
+    # ========================================
+    # Tool Installation Loop
+    # ========================================
+    # Install each tool with progress tracking and visual feedback
+    local current_step=1
+    local total_steps=${#TOOLS_TO_INSTALL[@]}
+    
+    for tool in "${TOOLS_TO_INSTALL[@]}"; do
+        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        case "$tool" in
+            claude-code)
+                echo -e "${BLUE}Step $current_step/$total_steps: Claude Code CLI${NC}"
+                ;;
+            github-cli)
+                echo -e "${BLUE}Step $current_step/$total_steps: GitHub CLI${NC}"
+                ;;
+            doppler)
+                echo -e "${BLUE}Step $current_step/$total_steps: Doppler SecretOps${NC}"
+                ;;
+            tailscale)
+                echo -e "${BLUE}Step $current_step/$total_steps: Tailscale VPN${NC}"
+                ;;
+        esac
+        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        
+        case "$tool" in
+            claude-code) install_claude ;;
+            github-cli) install_github_cli ;;
+            doppler) install_doppler ;;
+            tailscale) install_tailscale ;;
+        esac
+        
+        ((current_step++))
+        echo ""
+    done
+    
+    # ========================================
+    # Post-Installation Configuration
+    # ========================================
+    
+    # Run environment-specific additional setup
     run_additional_setup "$DETECTED_ENV"
     echo ""
     
-    # Verify all installations
+    # Verify all tools were installed successfully
     verify_installations
+    
+    # ========================================
+    # Setup Complete - Show Next Steps
+    # ========================================
     
     print_info "Setup complete! 🚀"
     echo ""
@@ -691,5 +969,8 @@ main() {
     print_success "Your $DETECTED_ENV environment is ready!"
 }
 
-# Run main function
+# ============================================================================
+# Script Entry Point
+# ============================================================================
+# Execute the main function with all command line arguments
 main "$@"
