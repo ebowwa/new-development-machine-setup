@@ -248,6 +248,8 @@ install_claude() {
         print_info "Claude Code already installed, checking for updates..."
         if [[ "$OS" == "macos" ]]; then
             brew upgrade claude-code 2>/dev/null || true
+        elif command_exists npm; then
+            npm update -g @anthropic-ai/claude-code 2>/dev/null || true
         fi
     else
         case "$OS" in
@@ -255,17 +257,26 @@ install_claude() {
                 brew install claude-code
                 ;;
             debian|linux)
-                # Install using npm (cross-platform method)
-                if ! command_exists npm; then
-                    print_info "Installing Node.js and npm first..."
-                    if [[ "$OS" == "debian" ]]; then
-                        sudo apt-get update
-                        sudo apt-get install -y nodejs npm
-                    else
-                        curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo bash -
-                        sudo yum install -y nodejs
+                # Check Node.js version if installed
+                if command_exists node; then
+                    NODE_VERSION=$(node --version | sed 's/v//' | cut -d. -f1)
+                    if [ "$NODE_VERSION" -lt 18 ]; then
+                        print_warning "Node.js version is too old (v$NODE_VERSION). Claude Code requires Node.js 18+"
+                        print_info "Installing Node.js 20 LTS..."
+                        
+                        # Install Node.js 20 LTS
+                        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+                        sudo apt-get install -y nodejs
                     fi
+                elif ! command_exists npm; then
+                    print_info "Installing Node.js 20 LTS and npm..."
+                    # Install Node.js 20 LTS for better compatibility
+                    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+                    sudo apt-get install -y nodejs
                 fi
+                
+                # Install Claude Code via npm
+                print_info "Installing Claude Code via npm..."
                 npm install -g @anthropic-ai/claude-code
                 ;;
             *)
@@ -347,6 +358,72 @@ install_github_cli() {
     print_success "GitHub CLI installation complete"
 }
 
+# Install Doppler CLI
+install_doppler() {
+    if ! should_install_tool "doppler"; then
+        print_info "Skipping Doppler installation (not needed for $DETECTED_ENV)"
+        return
+    fi
+    
+    print_info "Installing Doppler CLI..."
+    
+    if command_exists doppler; then
+        print_info "Doppler already installed, checking for updates..."
+        case "$OS" in
+            macos)
+                brew upgrade dopplerhq/tap/doppler 2>/dev/null || true
+                ;;
+            debian)
+                sudo apt-get update && sudo apt-get upgrade doppler -y 2>/dev/null || true
+                ;;
+        esac
+    else
+        case "$OS" in
+            macos)
+                brew install dopplerhq/tap/doppler
+                ;;
+            debian)
+                # Install prerequisites
+                sudo apt-get update
+                sudo apt-get install -y apt-transport-https ca-certificates curl gnupg
+                
+                # Add Doppler's GPG key and repository
+                curl -sLf --retry 3 --tlsv1.2 --proto "=https" 'https://packages.doppler.com/public/cli/gpg.DE2A7741A397C129.key' | sudo gpg --dearmor -o /usr/share/keyrings/doppler-archive-keyring.gpg
+                echo "deb [signed-by=/usr/share/keyrings/doppler-archive-keyring.gpg] https://packages.doppler.com/public/cli/deb/debian any-version main" | sudo tee /etc/apt/sources.list.d/doppler-cli.list
+                
+                # Install Doppler
+                sudo apt-get update
+                sudo apt-get install -y doppler
+                ;;
+            redhat)
+                # Add Doppler's YUM repository
+                sudo rpm --import 'https://packages.doppler.com/public/cli/gpg.DE2A7741A397C129.key'
+                curl -sLf --retry 3 --tlsv1.2 --proto "=https" 'https://packages.doppler.com/public/cli/config.rpm.txt' | sudo tee /etc/yum.repos.d/doppler-cli.repo
+                
+                # Install Doppler
+                sudo yum install -y doppler
+                ;;
+            *)
+                print_warning "Doppler installation not automated for this OS"
+                print_info "Please visit: https://docs.doppler.com/docs/install-cli"
+                return
+                ;;
+        esac
+    fi
+    
+    # Configure Doppler if token is available
+    if [ -n "$DOPPLER_TOKEN" ]; then
+        print_info "Configuring Doppler with token..."
+        doppler configure set token "$DOPPLER_TOKEN" --scope / 2>/dev/null || true
+        print_success "Doppler configured"
+    else
+        print_warning "No DOPPLER_TOKEN found. You'll need to authenticate manually."
+        print_info "Run: doppler login"
+    fi
+    
+    print_success "Doppler installation complete"
+}
+
 # Install Tailscale
 install_tailscale() {
     if ! should_install_tool "tailscale"; then
@@ -400,27 +477,43 @@ verify_installations() {
     local all_good=true
     
     # Check Claude
-    if command_exists claude; then
-        print_success "Claude Code: $(claude --version 2>/dev/null || echo 'installed')"
-    else
-        print_error "Claude Code: not found"
-        all_good=false
+    if should_install_tool "claude-code"; then
+        if command_exists claude; then
+            print_success "Claude Code: $(claude --version 2>/dev/null || echo 'installed')"
+        else
+            print_error "Claude Code: not found"
+            all_good=false
+        fi
     fi
     
     # Check GitHub CLI
-    if command_exists gh; then
-        print_success "GitHub CLI: $(gh --version | head -n1)"
-    else
-        print_error "GitHub CLI: not found"
-        all_good=false
+    if should_install_tool "github-cli"; then
+        if command_exists gh; then
+            print_success "GitHub CLI: $(gh --version | head -n1)"
+        else
+            print_error "GitHub CLI: not found"
+            all_good=false
+        fi
+    fi
+    
+    # Check Doppler
+    if should_install_tool "doppler"; then
+        if command_exists doppler; then
+            print_success "Doppler: $(doppler --version 2>/dev/null || echo 'installed')"
+        else
+            print_error "Doppler: not found"
+            all_good=false
+        fi
     fi
     
     # Check Tailscale
-    if command_exists tailscale; then
-        print_success "Tailscale: $(tailscale --version | head -n1)"
-    else
-        print_error "Tailscale: not found"
-        all_good=false
+    if should_install_tool "tailscale"; then
+        if command_exists tailscale; then
+            print_success "Tailscale: $(tailscale --version | head -n1)"
+        else
+            print_error "Tailscale: not found"
+            all_good=false
+        fi
     fi
     
     echo ""
@@ -500,6 +593,10 @@ main() {
                 SKIP_TOOLS+=("tailscale")
                 shift
                 ;;
+            --skip-doppler)
+                SKIP_TOOLS+=("doppler")
+                shift
+                ;;
             *)
                 print_error "Unknown option: $1"
                 echo "Use --help for usage information"
@@ -548,6 +645,8 @@ main() {
     install_claude
     echo ""
     install_github_cli
+    echo ""
+    install_doppler
     echo ""
     install_tailscale
     echo ""
