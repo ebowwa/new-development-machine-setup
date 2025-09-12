@@ -46,8 +46,8 @@ The setup script automatically detects your environment and configures it approp
 
 ```bash
 # Clone and run - it auto-detects your environment!
-git clone https://github.com/yourusername/new-development-machine-setup.git
-cd new-development-machine-setup
+git clone https://github.com/ebowwa/node-starter.git
+cd node-starter
 ./setup.sh
 ```
 
