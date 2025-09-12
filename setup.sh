@@ -143,8 +143,8 @@ get_environment_tools() {
     # Override based on environment if specified in YAML
     case "$env" in
         vps)
-            TOOLS_TO_INSTALL=("tailscale" "github-cli" "doppler")
-            SKIP_TOOLS=("claude-code")
+            TOOLS_TO_INSTALL=("tailscale" "github-cli" "doppler" "claude-code")
+            SKIP_TOOLS=()
             ;;
         codespaces)
             TOOLS_TO_INSTALL=("github-cli" "claude-code" "doppler")
@@ -159,7 +159,7 @@ get_environment_tools() {
             SKIP_TOOLS=("tailscale" "claude-code")
             ;;
         local_dev|default)
-            TOOLS_TO_INSTALL=("tailscale" "github-cli" "claude-code")
+            TOOLS_TO_INSTALL=("tailscale" "github-cli" "claude-code" "doppler")
             SKIP_TOOLS=()
             ;;
     esac
@@ -668,7 +668,8 @@ main() {
     case "$DETECTED_ENV" in
         vps)
             echo "  1. Configure Tailscale: sudo tailscale up"
-            echo "  2. Setup GitHub deploy keys if needed"
+            echo "  2. Configure Claude: claude auth login"
+            echo "  3. Setup GitHub deploy keys if needed"
             ;;
         codespaces)
             echo "  1. Run 'gh auth login' if not already configured"

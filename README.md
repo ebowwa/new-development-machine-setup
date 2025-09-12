@@ -29,7 +29,7 @@ The setup script automatically detects your environment and configures it approp
 
 | Environment | Auto-Detection | Tools Installed | Tools Skipped |
 |------------|---------------|-----------------|---------------|
-| **VPS/Production** | Hostname pattern, env vars | Tailscale, GitHub CLI, Doppler | Claude Code |
+| **VPS/Production** | Hostname pattern, env vars | Tailscale, GitHub CLI, Doppler, Claude Code | None |
 | **GitHub Codespaces** | CODESPACES env var | GitHub CLI, Claude Code, Doppler | Tailscale |
 | **Local Development** | macOS + VS Code | All tools | None |
 | **CI/CD Pipeline** | CI env vars | GitHub CLI | Others |
@@ -158,7 +158,7 @@ MACHINE_TYPE=vps ./setup.sh
 - ✅ Tailscale for secure networking
 - ✅ GitHub CLI for deployments
 - ✅ Doppler for secrets management
-- ❌ Claude Code (not needed on servers)
+- ✅ Claude Code for AI assistance
 
 ### GitHub Codespaces
 Automatically detected and configured:
