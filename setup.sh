@@ -389,7 +389,9 @@ install_claude() {
     # Configure Claude with API key if available
     if [ -n "$ANTHROPIC_API_KEY" ]; then
         print_info "Configuring Claude with API key..."
-        claude auth login --key "$ANTHROPIC_API_KEY" 2>/dev/null || true
+        claude auth login --key "$ANTHROPIC_API_KEY" 2>/dev/null || {
+            print_warning "Claude already configured or auth failed"
+        }
         print_success "Claude Code configured"
     else
         print_warning "No ANTHROPIC_API_KEY found. You'll need to configure Claude manually."
@@ -418,7 +420,9 @@ install_github_cli() {
                 brew upgrade gh 2>/dev/null || true
                 ;;
             debian)
-                sudo apt-get update && sudo apt-get upgrade gh -y 2>/dev/null || true
+                # Only update gh package, not all system packages
+                sudo apt-get update > /dev/null 2>&1
+                sudo apt-get install --only-upgrade gh -y 2>/dev/null || true
                 ;;
         esac
     else
@@ -450,7 +454,9 @@ install_github_cli() {
     # Configure GitHub CLI if token is available
     if [ -n "$GITHUB_TOKEN" ]; then
         print_info "Configuring GitHub CLI with token..."
-        echo "$GITHUB_TOKEN" | gh auth login --with-token
+        echo "$GITHUB_TOKEN" | gh auth login --with-token 2>/dev/null || {
+            print_warning "GitHub CLI already configured or token auth failed"
+        }
         print_success "GitHub CLI configured"
     else
         print_warning "No GITHUB_TOKEN found. You'll need to authenticate manually."
@@ -492,8 +498,8 @@ install_doppler() {
                 sudo apt-get update
                 sudo apt-get install -y apt-transport-https ca-certificates curl gnupg
                 
-                # Add Doppler's GPG key and repository
-                curl -sLf --retry 3 --tlsv1.2 --proto "=https" 'https://packages.doppler.com/public/cli/gpg.DE2A7741A397C129.key' | sudo gpg --dearmor -o /usr/share/keyrings/doppler-archive-keyring.gpg
+                # Add Doppler's GPG key and repository (overwrite if exists)
+                curl -sLf --retry 3 --tlsv1.2 --proto "=https" 'https://packages.doppler.com/public/cli/gpg.DE2A7741A397C129.key' | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/doppler-archive-keyring.gpg
                 echo "deb [signed-by=/usr/share/keyrings/doppler-archive-keyring.gpg] https://packages.doppler.com/public/cli/deb/debian any-version main" | sudo tee /etc/apt/sources.list.d/doppler-cli.list
                 
                 # Install Doppler
@@ -519,7 +525,9 @@ install_doppler() {
     # Configure Doppler if token is available
     if [ -n "$DOPPLER_TOKEN" ]; then
         print_info "Configuring Doppler with token..."
-        doppler configure set token "$DOPPLER_TOKEN" --scope / 2>/dev/null || true
+        doppler configure set token "$DOPPLER_TOKEN" --scope / 2>/dev/null || {
+            print_warning "Doppler already configured or auth failed"
+        }
         print_success "Doppler configured"
     else
         print_warning "No DOPPLER_TOKEN found. You'll need to authenticate manually."
