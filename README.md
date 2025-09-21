@@ -29,15 +29,15 @@ The setup script automatically detects your environment and configures it approp
 
 | Environment | Auto-Detection | Tools Installed | Tools Skipped |
 |------------|---------------|-----------------|---------------|
-| **VPS/Production** | Hostname pattern, env vars | Tailscale, GitHub CLI, Doppler, Claude Code | None |
-| **GitHub Codespaces** | CODESPACES env var | GitHub CLI, Claude Code, Doppler | Tailscale |
+| **VPS/Production** | Hostname pattern, env vars | Tailscale, GitHub CLI, Doppler, AI assistant | None |
+| **GitHub Codespaces** | CODESPACES env var | GitHub CLI, AI assistant, Doppler | Tailscale |
 | **Local Development** | macOS + VS Code | All tools | None |
 | **CI/CD Pipeline** | CI env vars | GitHub CLI | Others |
 | **Container/Docker** | /.dockerenv file | GitHub CLI | Others |
 
 ## 🛠️ Tools Included
 
-- **Claude Code CLI** - Anthropic's AI coding assistant
+- **AI assistant** (Codex CLI or Claude Code) - choose the agent that matches your subscription
 - **GitHub CLI** (`gh`) - GitHub from the command line
 - **Tailscale** - Zero-config VPN for secure networking
 - **Doppler** - SecretOps platform for environment variables
@@ -84,9 +84,23 @@ nano .env  # Add your tokens
 ./setup.sh --list-envs
 ```
 
+### Choose Your AI Assistant
+```bash
+# Use Codex CLI instead of Claude Code
+./setup.sh --assistant codex
+
+# Shortcut flags
+./setup.sh --use-codex
+./setup.sh --use-claude
+
+# Persist the preference via environment variable
+echo "AI_ASSISTANT=codex" >> .env
+```
+The script defaults to Claude Code when no preference is set. At any time you can skip installing the selected assistant with `--skip-assistant` (alias: `--skip-claude`).
+
 ### Skip Specific Tools
 ```bash
-./setup.sh --skip-claude
+./setup.sh --skip-assistant   # Alias: --skip-claude
 ./setup.sh --skip-github
 ./setup.sh --skip-tailscale
 ./setup.sh --skip-doppler
@@ -102,6 +116,9 @@ Create a `.env` file with your tokens for automated configuration:
 ```bash
 # GitHub Personal Access Token
 GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+
+# AI assistant preference (codex or claude)
+AI_ASSISTANT=codex
 
 # Anthropic API Key (optional for Claude Pro/Team users)
 ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
@@ -158,11 +175,11 @@ MACHINE_TYPE=vps ./setup.sh
 - ✅ Tailscale for secure networking
 - ✅ GitHub CLI for deployments
 - ✅ Doppler for secrets management
-- ✅ Claude Code for AI assistance
+- ✅ Preferred AI assistant (Codex or Claude) for AI help
 
 ### GitHub Codespaces
 Automatically detected and configured:
-- ✅ Claude Code for AI assistance
+- ✅ Preferred AI assistant (Codex or Claude) for AI assistance
 - ✅ GitHub CLI (essential)
 - ✅ Doppler for dev secrets
 - ❌ Tailscale (not needed)
@@ -174,9 +191,14 @@ Full setup for your workstation:
 
 ## 🔧 Post-Installation
 
-### Claude Code
+### Claude Code (if selected)
 ```bash
 claude auth login  # Browser auth for Pro/Team users
+```
+
+### Codex CLI (if selected)
+```bash
+codex login
 ```
 
 ### GitHub CLI
