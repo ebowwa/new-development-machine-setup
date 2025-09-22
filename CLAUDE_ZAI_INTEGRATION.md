@@ -36,7 +36,7 @@ All sensitive configuration is stored in Doppler:
 # AI Configuration
 AI_ASSISTANT=zai
 ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic
-ANTHROPIC_AUTH_TOKEN=069739ffb9874d53986f4706acd1ddeb.oARvXer4w2nJZaE4
+ANTHROPIC_AUTH_TOKEN=your_zai_api_key_here
 ANTHROPIC_MODEL=glm-4.5
 ANTHROPIC_SMALL_FAST_MODEL=glm-4.5-air
 
