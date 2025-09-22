@@ -41,3 +41,4 @@ env/
 *.key
 *.pem
 *.cert
+doppler.env
