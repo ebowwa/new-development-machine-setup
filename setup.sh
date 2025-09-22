@@ -40,7 +40,7 @@ DEFAULT_AI_ASSISTANT="claude"
 # Determine if an AI assistant value is supported
 is_valid_ai_assistant() {
     case "$1" in
-        codex|claude)
+        codex|claude|zai)
             return 0
             ;;
         *)
@@ -55,6 +55,9 @@ get_ai_assistant_tool_id() {
         codex)
             echo "codex-cli"
             ;;
+        zai)
+            echo "claude-code"
+            ;;
         *)
             echo "claude-code"
             ;;
@@ -66,6 +69,9 @@ get_ai_assistant_display_name() {
     case "${AI_ASSISTANT:-$DEFAULT_AI_ASSISTANT}" in
         codex)
             echo "Codex CLI"
+            ;;
+        zai)
+            echo "Claude Code CLI (Z.ai)"
             ;;
         *)
             echo "Claude Code CLI"
@@ -79,6 +85,9 @@ get_ai_assistant_command() {
         codex)
             echo "codex"
             ;;
+        zai)
+            echo "claude"
+            ;;
         *)
             echo "claude"
             ;;
@@ -90,6 +99,9 @@ get_ai_assistant_next_step() {
     case "${AI_ASSISTANT:-$DEFAULT_AI_ASSISTANT}" in
         codex)
             echo "Run 'codex login' to authenticate"
+            ;;
+        zai)
+            echo "Open a new shell and run 'claude /status' to confirm the Z.ai connection"
             ;;
         *)
             echo "Run 'claude auth login'"
@@ -395,7 +407,96 @@ should_install_tool() {
 # Tool Installation Functions
 # ============================================================================
 
-# Install Claude Code CLI - Anthropic's AI coding assistant
+# Configure Claude Code to use the Z.ai Model API
+# Creates or updates ~/.claude/settings.json with the required environment
+# variables when ZAI_API_KEY is provided. Falls back to guidance if no key.
+configure_claude_for_zai() {
+    local settings_dir="$HOME/.claude"
+    local settings_file="$settings_dir/settings.json"
+    local base_url="https://api.z.ai/api/anthropic"
+    local primary_model="glm-4.5"
+    local fast_model="glm-4.5-air"
+
+    mkdir -p "$settings_dir"
+
+    if [ -z "$ZAI_API_KEY" ]; then
+        print_warning "ZAI_API_KEY not set. Unable to auto-configure Claude Code for Z.ai."
+        print_info "Add ZAI_API_KEY to your .env or environment variables, then rerun setup or follow the docs to configure manually."
+        return 1
+    fi
+
+    if command_exists python3; then
+        CLAUDE_SETTINGS_FILE="$settings_file" \
+        ZAI_BASE_URL="$base_url" \
+        ZAI_PRIMARY_MODEL="$primary_model" \
+        ZAI_FAST_MODEL="$fast_model" \
+        python3 <<'PY'
+import json
+import os
+
+settings_file = os.environ["CLAUDE_SETTINGS_FILE"]
+base_url = os.environ["ZAI_BASE_URL"]
+api_key = os.environ["ZAI_API_KEY"]
+primary_model = os.environ["ZAI_PRIMARY_MODEL"]
+fast_model = os.environ["ZAI_FAST_MODEL"]
+
+data = {}
+if os.path.exists(settings_file):
+    try:
+        with open(settings_file, "r", encoding="utf-8") as handle:
+            loaded = json.load(handle)
+            if isinstance(loaded, dict):
+                data = loaded
+    except Exception:
+        data = {}
+
+env = data.get("env")
+if not isinstance(env, dict):
+    env = {}
+    data["env"] = env
+
+env["ANTHROPIC_BASE_URL"] = base_url
+env["ANTHROPIC_AUTH_TOKEN"] = api_key
+env.setdefault("ANTHROPIC_MODEL", primary_model)
+env.setdefault("ANTHROPIC_SMALL_FAST_MODEL", fast_model)
+
+with open(settings_file, "w", encoding="utf-8") as handle:
+    json.dump(data, handle, indent=2)
+    handle.write("\n")
+PY
+        if [ $? -ne 0 ]; then
+            print_warning "Failed to update $settings_file via python3. Writing default configuration instead."
+            cat > "$settings_file" <<EOF
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "$base_url",
+    "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
+    "ANTHROPIC_MODEL": "$primary_model",
+    "ANTHROPIC_SMALL_FAST_MODEL": "$fast_model"
+  }
+}
+EOF
+        fi
+    else
+        cat > "$settings_file" <<EOF
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "$base_url",
+    "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
+    "ANTHROPIC_MODEL": "$primary_model",
+    "ANTHROPIC_SMALL_FAST_MODEL": "$fast_model"
+  }
+}
+EOF
+    fi
+
+    chmod 600 "$settings_file" 2>/dev/null || true
+    print_success "Configured Claude Code to use the Z.ai Model API"
+    print_info "Settings saved to $settings_file"
+    return 0
+}
+
+# Install Claude Code CLI - Anthropic's AI coding assistant (supports Anthropic & Z.ai endpoints)
 # Provides AI-powered code generation, refactoring, and assistance
 # Installation method varies by OS: Homebrew on macOS, npm on Linux
 install_claude() {
@@ -451,18 +552,28 @@ install_claude() {
         esac
     fi
     
-    # Configure Claude with API key if available
-    if [ -n "$ANTHROPIC_API_KEY" ]; then
-        print_info "Configuring Claude with API key..."
-        claude auth login --key "$ANTHROPIC_API_KEY" 2>/dev/null || {
-            print_warning "Claude already configured or auth failed"
-        }
-        print_success "Claude Code configured"
-    else
-        print_warning "No ANTHROPIC_API_KEY found. You'll need to configure Claude manually."
-        print_info "Run: claude auth login"
-    fi
-    
+    # Configure Claude based on selected assistant
+    case "${AI_ASSISTANT:-$DEFAULT_AI_ASSISTANT}" in
+        zai)
+            configure_claude_for_zai || {
+                print_warning "Claude Code not fully configured for Z.ai."
+                print_info "Set ZAI_API_KEY and rerun setup or add the environment variables manually."
+            }
+            ;;
+        *)
+            if [ -n "$ANTHROPIC_API_KEY" ]; then
+                print_info "Configuring Claude with API key..."
+                claude auth login --key "$ANTHROPIC_API_KEY" 2>/dev/null || {
+                    print_warning "Claude already configured or auth failed"
+                }
+                print_success "Claude Code configured"
+            else
+                print_warning "No ANTHROPIC_API_KEY found. You'll need to configure Claude manually."
+                print_info "Run: claude auth login"
+            fi
+            ;;
+    esac
+
     print_success "Claude Code installation complete"
 }
 
@@ -833,9 +944,10 @@ main() {
                 echo ""
                 echo "Options:"
                 echo "  --env ENV         Force specific environment (vps, codespaces, local_dev, ci_cd, container)"
-                echo "  --assistant NAME  Choose AI assistant (codex or claude)"
+                echo "  --assistant NAME  Choose AI assistant (codex, claude, or zai)"
                 echo "  --use-codex       Shortcut for --assistant codex"
                 echo "  --use-claude      Shortcut for --assistant claude"
+                echo "  --use-zai         Shortcut for --assistant zai"
                 echo "  --skip-assistant  Skip installing the selected AI assistant"
                 echo "  --skip-github     Skip GitHub CLI installation"
                 echo "  --skip-tailscale  Skip Tailscale installation"
@@ -860,6 +972,10 @@ main() {
                 FORCED_ASSISTANT="claude"
                 shift
                 ;;
+            --use-zai)
+                FORCED_ASSISTANT="zai"
+                shift
+                ;;
             --env)
                 FORCE_ENV="$2"
                 shift 2
@@ -873,7 +989,7 @@ main() {
                 echo "  container   - Docker/container environment"
                 exit 0
                 ;;
-            --skip-assistant|--skip-claude)
+            --skip-assistant|--skip-claude|--skip-zai)
                 SKIP_ASSISTANT=true
                 shift
                 ;;
@@ -928,7 +1044,7 @@ main() {
 
     if ! is_valid_ai_assistant "$AI_ASSISTANT"; then
         print_error "Unsupported AI assistant: $AI_ASSISTANT"
-        echo "Valid options: codex, claude"
+        echo "Valid options: codex, claude, zai"
         exit 1
     fi
 
@@ -1017,8 +1133,8 @@ main() {
     # Show each tool that will be installed
     for tool in "${TOOLS_TO_INSTALL[@]}"; do
         case "$tool" in
-            claude-code)
-                echo -e "  ${YELLOW}$step.${NC} Claude Code CLI"
+                claude-code)
+                    echo -e "  ${YELLOW}$step.${NC} $(get_ai_assistant_display_name)"
                 if command_exists claude; then
                     echo -e "     ${GREEN}✓${NC} Already installed (will check for updates)"
                 else
@@ -1084,7 +1200,7 @@ main() {
         echo -e "${YELLOW}Skipping:${NC}"
         for skip in "${SKIP_TOOLS[@]}"; do
             case "$skip" in
-                claude-code) echo -e "  ${RED}✗${NC} Claude Code CLI" ;;
+                claude-code) echo -e "  ${RED}✗${NC} $(get_ai_assistant_display_name)" ;;
                 codex-cli) echo -e "  ${RED}✗${NC} Codex CLI" ;;
                 github-cli) echo -e "  ${RED}✗${NC} GitHub CLI" ;;
                 doppler) echo -e "  ${RED}✗${NC} Doppler SecretOps" ;;
@@ -1132,7 +1248,7 @@ main() {
         echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         case "$tool" in
             claude-code)
-                echo -e "${BLUE}Step $current_step/$total_steps: Claude Code CLI${NC}"
+                echo -e "${BLUE}Step $current_step/$total_steps: $(get_ai_assistant_display_name)${NC}"
                 ;;
             codex-cli)
                 echo -e "${BLUE}Step $current_step/$total_steps: Codex CLI${NC}"
