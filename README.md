@@ -44,6 +44,19 @@ The setup script automatically detects your environment and configures it approp
 
 ## 🚀 Quick Start
 
+### For Z.ai Integration (feature branch)
+
+```bash
+# Clone the Z.ai integration branch
+git clone -b feature/zai-integration https://github.com/ebowwa/node-starter.git
+cd node-starter
+
+# Quick setup (handles Doppler auth automatically)
+./quick-setup.sh
+```
+
+### For Standard Setup
+
 ```bash
 # Clone and run - it auto-detects your environment!
 git clone https://github.com/ebowwa/node-starter.git
@@ -59,7 +72,36 @@ cd node-starter
 
 ## ⚙️ Configuration
 
-### Basic Setup
+### For Z.ai Integration
+```bash
+# The quick-setup.sh script handles everything automatically:
+# 1. Installs Doppler CLI if needed
+# 2. Prompts for Doppler authentication
+# 3. Configures the project
+# 4. Sets up Claude Code with Z.ai backend
+
+./quick-setup.sh
+```
+
+### Using Claude Code with Z.ai
+After setup, you have two options to use Claude Code:
+
+**Option 1: Load environment per session**
+```bash
+# Load Z.ai configuration from Doppler
+eval $(doppler secrets download --config dev --format env --no-file)
+
+# Start Claude Code with Z.ai backend
+claude
+```
+
+**Option 2: Use Doppler run wrapper**
+```bash
+# Start Claude with Doppler environment
+doppler run --config dev -- claude
+```
+
+### Basic Setup (Standard)
 ```bash
 # Optional: Add your API keys for automated config
 cp .env.example .env

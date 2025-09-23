@@ -424,17 +424,33 @@ configure_claude_for_zai() {
         # Check if Doppler is available and try to fetch from there
         if command_exists doppler; then
             print_info "No Z.ai API key found, trying to fetch from Doppler..."
-            if [ -n "$DOPPLER_PROJECT" ] && [ -n "$DOPPLER_CONFIG" ]; then
-                # Try to load secrets from Doppler
-                if eval $(doppler secrets download --config "$DOPPLER_CONFIG" --format env --no-file 2>/dev/null); then
-                    auth_token="$ANTHROPIC_AUTH_TOKEN"
-                    base_url="$ANTHROPIC_BASE_URL"
-                    primary_model="$ANTHROPIC_MODEL"
-                    fast_model="$ANTHROPIC_SMALL_FAST_MODEL"
-                    print_success "Successfully loaded Z.ai configuration from Doppler"
-                else
-                    print_warning "Failed to load secrets from Doppler"
-                fi
+            
+            # Check if user is logged in to Doppler
+            if ! doppler whoami >/dev/null 2>&1; then
+                print_warning "Not logged in to Doppler. Please authenticate:"
+                echo "  doppler login"
+                echo ""
+                print_info "After logging in, run: ./setup.sh --use-zai"
+                return 1
+            fi
+            
+            # Configure Doppler project if specified in .env
+            if [ -n "$DOPPLER_PROJECT" ]; then
+                print_info "Configuring Doppler project: $DOPPLER_PROJECT"
+                doppler configure set project "$DOPPLER_PROJECT" --scope . >/dev/null 2>&1 || true
+            fi
+            
+            # Try to load secrets from Doppler
+            local config_name="${DOPPLER_CONFIG:-dev}"
+            if eval $(doppler secrets download --config "$config_name" --format env --no-file 2>/dev/null); then
+                auth_token="$ANTHROPIC_AUTH_TOKEN"
+                base_url="$ANTHROPIC_BASE_URL"
+                primary_model="$ANTHROPIC_MODEL"
+                fast_model="$ANTHROPIC_SMALL_FAST_MODEL"
+                print_success "Successfully loaded Z.ai configuration from Doppler"
+            else
+                print_warning "Failed to load secrets from Doppler"
+                print_info "Make sure you have access to the $DOPPLER_PROJECT project"
             fi
         fi
         
