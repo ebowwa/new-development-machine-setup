@@ -409,20 +409,43 @@ should_install_tool() {
 
 # Configure Claude Code to use the Z.ai Model API
 # Creates or updates ~/.claude/settings.json with the required environment
-# variables when ZAI_API_KEY is provided. Falls back to guidance if no key.
+# variables from either ZAI_API_KEY (legacy) or Doppler secrets.
 configure_claude_for_zai() {
     local settings_dir="$HOME/.claude"
     local settings_file="$settings_dir/settings.json"
-    local base_url="https://api.z.ai/api/anthropic"
-    local primary_model="glm-4.5"
-    local fast_model="glm-4.5-air"
+    local base_url="${ANTHROPIC_BASE_URL:-https://api.z.ai/api/anthropic}"
+    local primary_model="${ANTHROPIC_MODEL:-glm-4.5}"
+    local fast_model="${ANTHROPIC_SMALL_FAST_MODEL:-glm-4.5-air}"
+    local auth_token="${ANTHROPIC_AUTH_TOKEN:-$ZAI_API_KEY}"
 
     mkdir -p "$settings_dir"
 
-    if [ -z "$ZAI_API_KEY" ]; then
-        print_warning "ZAI_API_KEY not set. Unable to auto-configure Claude Code for Z.ai."
-        print_info "Add ZAI_API_KEY to your .env or environment variables, then rerun setup or follow the docs to configure manually."
-        return 1
+    if [ -z "$auth_token" ]; then
+        # Check if Doppler is available and try to fetch from there
+        if command_exists doppler; then
+            print_info "No Z.ai API key found, trying to fetch from Doppler..."
+            if [ -n "$DOPPLER_PROJECT" ] && [ -n "$DOPPLER_CONFIG" ]; then
+                # Try to load secrets from Doppler
+                if eval $(doppler secrets download --config "$DOPPLER_CONFIG" --format env --no-file 2>/dev/null); then
+                    auth_token="$ANTHROPIC_AUTH_TOKEN"
+                    base_url="$ANTHROPIC_BASE_URL"
+                    primary_model="$ANTHROPIC_MODEL"
+                    fast_model="$ANTHROPIC_SMALL_FAST_MODEL"
+                    print_success "Successfully loaded Z.ai configuration from Doppler"
+                else
+                    print_warning "Failed to load secrets from Doppler"
+                fi
+            fi
+        fi
+        
+        if [ -z "$auth_token" ]; then
+            print_warning "No Z.ai API key found and Doppler access failed."
+            print_info "Either:"
+            print_info "1. Add ZAI_API_KEY to your .env file, or"
+            print_info "2. Run 'doppler login' and configure project, or"
+            print_info "3. Configure Claude Code manually after setup"
+            return 1
+        fi
     fi
 
     if command_exists python3; then
@@ -456,7 +479,7 @@ if not isinstance(env, dict):
     data["env"] = env
 
 env["ANTHROPIC_BASE_URL"] = base_url
-env["ANTHROPIC_AUTH_TOKEN"] = api_key
+env["ANTHROPIC_AUTH_TOKEN"] = auth_token
 env.setdefault("ANTHROPIC_MODEL", primary_model)
 env.setdefault("ANTHROPIC_SMALL_FAST_MODEL", fast_model)
 
@@ -470,7 +493,7 @@ PY
 {
   "env": {
     "ANTHROPIC_BASE_URL": "$base_url",
-    "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN": "$auth_token",
     "ANTHROPIC_MODEL": "$primary_model",
     "ANTHROPIC_SMALL_FAST_MODEL": "$fast_model"
   }
@@ -482,7 +505,7 @@ EOF
 {
   "env": {
     "ANTHROPIC_BASE_URL": "$base_url",
-    "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN": "$auth_token",
     "ANTHROPIC_MODEL": "$primary_model",
     "ANTHROPIC_SMALL_FAST_MODEL": "$fast_model"
   }
