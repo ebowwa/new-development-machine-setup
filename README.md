@@ -44,6 +44,19 @@ The setup script automatically detects your environment and configures it approp
 
 ## 🚀 Quick Start
 
+### For Z.ai Integration (feature branch)
+
+```bash
+# Clone the Z.ai integration branch
+git clone -b feature/zai-integration https://github.com/ebowwa/node-starter.git
+cd node-starter
+
+# Quick setup (handles Doppler auth automatically)
+./quick-setup.sh
+```
+
+### For Standard Setup
+
 ```bash
 # Clone and run - it auto-detects your environment!
 git clone https://github.com/ebowwa/node-starter.git
@@ -59,7 +72,51 @@ cd node-starter
 
 ## ⚙️ Configuration
 
-### Basic Setup
+### For Z.ai Integration
+```bash
+# The quick-setup.sh script handles everything automatically:
+# 1. Installs Doppler CLI if needed
+# 2. Prompts for Doppler authentication
+# 3. Configures the project
+# 4. Sets up Claude Code with Z.ai backend
+
+./quick-setup.sh
+```
+
+### Using Claude Code with Z.ai
+After setup, you have two options to use Claude Code:
+
+**Option 1: Load environment per session**
+```bash
+# Load Z.ai configuration from Doppler
+eval $(doppler secrets download --config dev --format env --no-file)
+
+# Start Claude Code with Z.ai backend
+claude
+```
+
+**Option 2: Use Doppler run wrapper**
+```bash
+# Start Claude with Doppler environment
+doppler run --config dev -- claude
+```
+
+### Claude Settings Management
+The project includes Claude settings templates for easy configuration:
+
+```bash
+# Install Z.ai-optimized Claude settings
+./install-claude-settings.sh
+
+# View settings files
+ls .claude/
+# .claude/settings.template.json  # Template for Z.ai config
+# .claude/settings.local.json     # Local project settings
+```
+
+The setup script automatically installs Claude settings when using `--use-zai` flag.
+
+### Basic Setup (Standard)
 ```bash
 # Optional: Add your API keys for automated config
 cp .env.example .env
@@ -85,22 +142,33 @@ nano .env  # Add your tokens
 ```
 
 ### Choose Your AI Assistant
+
+Pick the agent that matches your subscription:
+
+- `claude` (default): Claude Code with Anthropic’s API
+- `zai`: Claude Code routed through the Z.ai Model API (GLM-4.5)
+- `codex`: OpenAI Codex CLI
+
 ```bash
 # Use Codex CLI instead of Claude Code
 ./setup.sh --assistant codex
 
+# Route Claude Code through Z.ai’s endpoint
+./setup.sh --assistant zai
+
 # Shortcut flags
 ./setup.sh --use-codex
 ./setup.sh --use-claude
+./setup.sh --use-zai
 
 # Persist the preference via environment variable
-echo "AI_ASSISTANT=codex" >> .env
+echo "AI_ASSISTANT=zai" >> .env
 ```
-The script defaults to Claude Code when no preference is set. At any time you can skip installing the selected assistant with `--skip-assistant` (alias: `--skip-claude`).
+The script defaults to Claude Code when no preference is set. At any time you can skip installing the selected assistant with `--skip-assistant` (aliases: `--skip-claude`, `--skip-zai`).
 
 ### Skip Specific Tools
 ```bash
-./setup.sh --skip-assistant   # Alias: --skip-claude
+./setup.sh --skip-assistant   # Aliases: --skip-claude, --skip-zai
 ./setup.sh --skip-github
 ./setup.sh --skip-tailscale
 ./setup.sh --skip-doppler
@@ -117,10 +185,13 @@ Create a `.env` file with your tokens for automated configuration:
 # GitHub Personal Access Token
 GITHUB_TOKEN=ghp_xxxxxxxxxxxx
 
-# AI assistant preference (codex or claude)
-AI_ASSISTANT=codex
+# AI assistant preference (codex, claude, or zai)
+AI_ASSISTANT=zai
 
-# Anthropic API Key (optional for Claude Pro/Team users)
+# Z.ai API Key (required when AI_ASSISTANT=zai)
+ZAI_API_KEY=zai-xxxxxxxxxxxx
+
+# Anthropic API Key (optional when using Anthropic directly)
 ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
 
 # Tailscale Auth Key (for headless setup)
@@ -175,11 +246,11 @@ MACHINE_TYPE=vps ./setup.sh
 - ✅ Tailscale for secure networking
 - ✅ GitHub CLI for deployments
 - ✅ Doppler for secrets management
-- ✅ Preferred AI assistant (Codex or Claude) for AI help
+- ✅ Preferred AI assistant (Codex, Claude, or Z.ai) for AI help
 
 ### GitHub Codespaces
 Automatically detected and configured:
-- ✅ Preferred AI assistant (Codex or Claude) for AI assistance
+- ✅ Preferred AI assistant (Codex, Claude, or Z.ai) for AI assistance
 - ✅ GitHub CLI (essential)
 - ✅ Doppler for dev secrets
 - ❌ Tailscale (not needed)
@@ -193,8 +264,14 @@ Full setup for your workstation:
 
 ### Claude Code (if selected)
 ```bash
-claude auth login  # Browser auth for Pro/Team users
+# Anthropic users
+claude auth login
+
+# Z.ai users
+claude /status  # Confirms the GLM-4.5 endpoint is active
 ```
+
+When `AI_ASSISTANT=zai`, the setup script writes your credentials to `~/.claude/settings.json` (creating the file if needed) so future shells automatically target `https://api.z.ai/api/anthropic`.
 
 ### Codex CLI (if selected)
 ```bash
@@ -229,9 +306,13 @@ doppler configure set token $DOPPLER_TOKEN --scope /
 ## 📝 Files
 
 - `setup.sh` - Main installation script
+- `quick-setup.sh` - Streamlined Z.ai setup
 - `situations.yaml` - Environment and tool configurations
 - `.env.example` - Template for API keys
 - `.env` - Your API keys (git-ignored)
+- `.claude/settings.template.json` - Claude settings template for Z.ai
+- `.claude/settings.local.json` - Local Claude settings
+- `install-claude-settings.sh` - Claude settings installation script
 
 ## 🔒 Security
 
