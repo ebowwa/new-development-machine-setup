@@ -98,7 +98,7 @@ claude
 **Option 2: Use Doppler run wrapper**
 ```bash
 # Start Claude with Doppler environment
-doppler run --config dev -- claude
+doppler run --project node-starter --config dev -- claude
 ```
 
 ### Claude Settings Management
