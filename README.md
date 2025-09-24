@@ -110,11 +110,14 @@ The project includes Claude settings templates for easy configuration:
 
 # View settings files
 ls .claude/
-# .claude/settings.template.json  # Template for Z.ai config
+# .claude/settings.template.json  # Settings template
 # .claude/settings.local.json     # Local project settings
 ```
 
-The setup script automatically installs Claude settings when using `--use-zai` flag.
+The setup script automatically installs Claude settings based on your AI assistant preference:
+- `--use-zai` installs Z.ai configuration (GLM-4.5 models)
+- `--use-claude` installs standard Anthropic configuration
+- The `install-claude-settings.sh` script is now dynamic and generates appropriate settings
 
 ### Basic Setup (Standard)
 ```bash
