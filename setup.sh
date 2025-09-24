@@ -55,9 +55,6 @@ get_ai_assistant_tool_id() {
         codex)
             echo "codex-cli"
             ;;
-        zai)
-            echo "claude-code"
-            ;;
         *)
             echo "claude-code"
             ;;

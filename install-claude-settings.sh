@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Claude Settings Installation Script for node-starter
-# This script installs Claude Code settings optimized for Z.ai integration
+# Dynamic Claude Settings Installation Script for node-starter
+# This script generates Claude Code settings based on user preference
 
 set -e
 
@@ -11,7 +11,10 @@ SETTINGS_LOCAL="${SCRIPT_DIR}/.claude/settings.local.json"
 CLAUDE_SETTINGS_DIR="$HOME/.claude"
 CLAUDE_SETTINGS_FILE="$CLAUDE_SETTINGS_DIR/settings.json"
 
-echo "🔧 Installing Claude Code settings for Z.ai integration..."
+# Determine Claude configuration based on environment
+AI_ASSISTANT="${AI_ASSISTANT:-claude}"
+
+echo "🔧 Installing Claude Code settings for: $AI_ASSISTANT"
 
 # Check if we're in the right directory
 if [ ! -f "$SETTINGS_TEMPLATE" ]; then
@@ -28,34 +31,81 @@ if [ -f "$CLAUDE_SETTINGS_FILE" ]; then
     cp "$CLAUDE_SETTINGS_FILE" "$CLAUDE_SETTINGS_DIR/settings.json.backup.$(date +%Y%m%d_%H%M%S)"
 fi
 
-# Copy the template settings to Claude's config directory
-echo "📋 Installing Claude settings template..."
-cp "$SETTINGS_TEMPLATE" "$CLAUDE_SETTINGS_FILE"
+# Generate settings based on AI assistant preference
+case "$AI_ASSISTANT" in
+    zai)
+        echo "📋 Configuring Claude Code for Z.ai backend..."
+        cat > "$CLAUDE_SETTINGS_FILE" << 'EOF'
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "ANTHROPIC_MODEL": "glm-4.5",
+    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
+  },
+  "bashAliases": {
+    "python": "uv run python",
+    "python3": "uv run python",
+    "pip": "uv pip",
+    "pip3": "uv pip",
+    "pip install": "uv pip install",
+    "pip3 install": "uv pip install"
+  }
+}
+EOF
+        echo "✅ Z.ai configuration applied!"
+        echo ""
+        echo "🎯 Settings configured for:"
+        echo "   • Base URL: https://api.z.ai/api/anthropic"
+        echo "   • Primary Model: glm-4.5"
+        echo "   • Fast Model: glm-4.5-air"
+        echo "   • UV integration for Python"
+        ;;
+    *)
+        echo "📋 Configuring Claude Code for Anthropic backend..."
+        cat > "$CLAUDE_SETTINGS_FILE" << 'EOF'
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "bashAliases": {
+    "python": "uv run python",
+    "python3": "uv run python",
+    "pip": "uv pip",
+    "pip3": "uv pip",
+    "pip install": "uv pip install",
+    "pip3 install": "uv pip install"
+  }
+}
+EOF
+        echo "✅ Anthropic configuration applied!"
+        echo ""
+        echo "🎯 Settings configured for:"
+        echo "   • Base URL: Default Anthropic endpoint"
+        echo "   • Models: Default Anthropic models"
+        echo "   • UV integration for Python"
+        ;;
+esac
 
 # Also create local settings for project-specific overrides
 if [ -f "$SETTINGS_LOCAL" ]; then
     echo "📋 Local settings file already exists"
 else
     echo "📋 Creating local settings file..."
-    cp "$SETTINGS_TEMPLATE" "$SETTINGS_LOCAL"
+    # Copy the generated settings to local
+    cp "$CLAUDE_SETTINGS_FILE" "$SETTINGS_LOCAL"
 fi
 
 # Set proper permissions
 chmod 600 "$CLAUDE_SETTINGS_FILE" 2>/dev/null || true
 chmod 600 "$SETTINGS_LOCAL" 2>/dev/null || true
 
-echo "✅ Claude Code settings installed successfully!"
 echo ""
-echo "🎯 Settings configured for:"
-echo "   • Base URL: https://api.z.ai/api/anthropic"
-echo "   • Primary Model: glm-4.5"
-echo "   • Fast Model: glm-4.5-air"
-echo "   • UV integration for Python"
-echo ""
-echo "💡 To use with Doppler environment:"
-echo "   doppler run --project node-starter --config dev -- claude"
+echo "💡 Usage:"
+echo "   • For Z.ai: Make sure ZAI_API_KEY is set in your environment"
+echo "   • For Anthropic: Make sure ANTHROPIC_API_KEY is set"
 echo ""
 echo "📝 Settings files:"
 echo "   • Global: $CLAUDE_SETTINGS_FILE"
-echo "   • Template: $SETTINGS_TEMPLATE"
 echo "   • Local: $SETTINGS_LOCAL"
+echo ""
+echo "🚀 Start Claude Code with:"
+echo "   claude"
