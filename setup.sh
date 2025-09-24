@@ -598,6 +598,14 @@ install_claude() {
                 print_warning "Claude Code not fully configured for Z.ai."
                 print_info "Set ZAI_API_KEY and rerun setup or add the environment variables manually."
             }
+            # Install Claude settings template for Z.ai
+            if [ -f "${SCRIPT_DIR}/.claude/settings.template.json" ]; then
+                print_info "Installing Claude settings template..."
+                "${SCRIPT_DIR}/install-claude-settings.sh" >/dev/null 2>&1 || {
+                    print_warning "Could not install Claude settings template automatically."
+                    print_info "Run './install-claude-settings.sh' manually after setup."
+                }
+            fi
             ;;
         *)
             if [ -n "$ANTHROPIC_API_KEY" ]; then

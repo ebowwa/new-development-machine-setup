@@ -60,6 +60,18 @@ claude
 doppler run --config dev -- claude
 ```
 
+### Claude Settings Management
+```bash
+# Install Claude settings template (Z.ai optimized)
+./install-claude-settings.sh
+
+# Manual settings backup
+cp ~/.claude/settings.json ~/.claude/settings.json.backup.$(date +%Y%m%d_%H%M%S)
+
+# View current settings
+cat ~/.claude/settings.json
+```
+
 ### Scripts and Automation
 ```bash
 # Use in scripts with doppler run
@@ -121,3 +133,13 @@ This setup can be replicated for other projects:
 - All actual secrets are fetched from Doppler at runtime
 - The `~/.claude/settings.json` file is configured to use Z.ai by default
 - This setup works seamlessly across local development, Codespaces, and VPS environments
+
+## 📁 Claude Settings Files
+
+The project includes Claude settings templates for easy setup:
+
+- `.claude/settings.template.json` - Template for Z.ai configuration
+- `.claude/settings.local.json` - Local project-specific settings
+- `install-claude-settings.sh` - Script to install settings to `~/.claude/settings.json`
+
+These files ensure consistent Claude Code configuration across all environments and make it easy to restore settings if needed.

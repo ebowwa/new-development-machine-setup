@@ -101,6 +101,21 @@ claude
 doppler run --config dev -- claude
 ```
 
+### Claude Settings Management
+The project includes Claude settings templates for easy configuration:
+
+```bash
+# Install Z.ai-optimized Claude settings
+./install-claude-settings.sh
+
+# View settings files
+ls .claude/
+# .claude/settings.template.json  # Template for Z.ai config
+# .claude/settings.local.json     # Local project settings
+```
+
+The setup script automatically installs Claude settings when using `--use-zai` flag.
+
 ### Basic Setup (Standard)
 ```bash
 # Optional: Add your API keys for automated config
@@ -291,9 +306,13 @@ doppler configure set token $DOPPLER_TOKEN --scope /
 ## 📝 Files
 
 - `setup.sh` - Main installation script
+- `quick-setup.sh` - Streamlined Z.ai setup
 - `situations.yaml` - Environment and tool configurations
 - `.env.example` - Template for API keys
 - `.env` - Your API keys (git-ignored)
+- `.claude/settings.template.json` - Claude settings template for Z.ai
+- `.claude/settings.local.json` - Local Claude settings
+- `install-claude-settings.sh` - Claude settings installation script
 
 ## 🔒 Security
 
