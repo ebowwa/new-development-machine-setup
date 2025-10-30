@@ -48,7 +48,7 @@ The setup script automatically detects your environment and configures it approp
 
 ```bash
 # Clone the Z.ai integration branch
-git clone -b feature/zai-integration https://github.com/ebowwa/node-starter.git
+git clone -b feature/zai-integration https://github.com/ebowwa/seed.git
 cd node-starter
 
 # Quick setup (handles Doppler auth automatically)
@@ -59,7 +59,7 @@ cd node-starter
 
 ```bash
 # Clone and run - it auto-detects your environment!
-git clone https://github.com/ebowwa/node-starter.git
+git clone https://github.com/ebowwa/seed.git
 cd node-starter
 ./setup.sh
 ```
@@ -98,7 +98,7 @@ claude
 **Option 2: Use Doppler run wrapper**
 ```bash
 # Start Claude with Doppler environment
-doppler run --project node-starter --config dev -- claude
+doppler run --project seed --config dev -- claude
 ```
 
 ### Claude Settings Management
