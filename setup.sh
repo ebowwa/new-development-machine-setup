@@ -276,33 +276,33 @@ get_environment_tools() {
     assistant_tool=$(get_ai_assistant_tool_id)
     
     # Start with default tool set (all tools)
-    TOOLS_TO_INSTALL=("tailscale" "github-cli" "${assistant_tool}" "doppler")
+    TOOLS_TO_INSTALL=("tailscale" "github-cli" "${assistant_tool}" "doppler" "vision-mcp-server")
     
     # Override tool selection based on specific environment needs
     case "$env" in
         vps)
-            # VPS needs all tools including Claude for remote development
-            TOOLS_TO_INSTALL=("tailscale" "github-cli" "doppler" "${assistant_tool}")
+            # VPS needs all tools including Claude and Vision MCP for remote development
+            TOOLS_TO_INSTALL=("tailscale" "github-cli" "doppler" "${assistant_tool}" "vision-mcp-server")
             SKIP_TOOLS=()
             ;;
         codespaces)
-            # Codespaces doesn't need Tailscale (GitHub handles networking)
-            TOOLS_TO_INSTALL=("github-cli" "${assistant_tool}" "doppler")
+            # Codespaces doesn't need Tailscale (GitHub handles networking) but gets Vision MCP
+            TOOLS_TO_INSTALL=("github-cli" "${assistant_tool}" "doppler" "vision-mcp-server")
             SKIP_TOOLS=("tailscale")
             ;;
         ci_cd)
             # CI/CD only needs GitHub CLI for releases/deployments
             TOOLS_TO_INSTALL=("github-cli")
-            SKIP_TOOLS=("tailscale" "${assistant_tool}")
+            SKIP_TOOLS=("tailscale" "${assistant_tool}" "vision-mcp-server")
             ;;
         container)
             # Containers typically only need GitHub CLI
             TOOLS_TO_INSTALL=("github-cli")
-            SKIP_TOOLS=("tailscale" "${assistant_tool}")
+            SKIP_TOOLS=("tailscale" "${assistant_tool}" "vision-mcp-server")
             ;;
         local_dev|default)
-            # Local dev and default get everything
-            TOOLS_TO_INSTALL=("tailscale" "github-cli" "${assistant_tool}" "doppler")
+            # Local dev and default get everything including Vision MCP
+            TOOLS_TO_INSTALL=("tailscale" "github-cli" "${assistant_tool}" "doppler" "vision-mcp-server")
             SKIP_TOOLS=()
             ;;
     esac
@@ -820,9 +820,9 @@ install_tailscale() {
         print_info "Skipping Tailscale installation (not needed for $DETECTED_ENV)"
         return
     fi
-    
+
     print_info "Installing Tailscale..."
-    
+
     if command_exists tailscale; then
         print_info "Tailscale already installed"
     else
@@ -845,7 +845,7 @@ install_tailscale() {
                 ;;
         esac
     fi
-    
+
     # Configure Tailscale if auth key is available
     if [ -n "$TAILSCALE_AUTH_KEY" ]; then
         print_info "Configuring Tailscale with auth key..."
@@ -855,8 +855,61 @@ install_tailscale() {
         print_info "No TAILSCALE_AUTH_KEY found."
         print_info "Run 'tailscale up' to authenticate interactively"
     fi
-    
+
     print_success "Tailscale installation complete"
+}
+
+# Install Vision MCP Server - Z.AI Vision capabilities via Model Context Protocol
+# Provides image analysis, video understanding, and other visual AI capabilities
+# Integrates with Claude Code and other MCP-compatible clients
+install_vision_mcp() {
+    # Skip if not needed for this environment
+    if ! should_install_tool "vision-mcp-server"; then
+        print_info "Skipping Vision MCP Server installation (not needed for $DETECTED_ENV)"
+        return
+    fi
+
+    print_info "Installing Vision MCP Server..."
+
+    # Check Node.js availability
+    if ! command_exists node; then
+        print_warning "Node.js is required for Vision MCP Server"
+        if [[ "$OS" == "macos" ]]; then
+            print_info "Installing Node.js via Homebrew..."
+            brew install node
+        elif [[ "$OS" == "debian" ]]; then
+            print_info "Installing Node.js 20 LTS..."
+            curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+        elif [[ "$OS" == "redhat" ]]; then
+            print_info "Installing Node.js 20 LTS..."
+            curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+            sudo yum install -y nodejs
+        else
+            print_error "Please install Node.js manually to use Vision MCP Server"
+            return
+        fi
+    fi
+
+    # Test the installation
+    if npx -y @z_ai/mcp-server --version >/dev/null 2>&1; then
+        local version_output=$(npx -y @z_ai/mcp-server --version 2>/dev/null || echo "installed")
+        print_success "Vision MCP Server: $version_output"
+    else
+        print_warning "Vision MCP Server test failed, but package may still work"
+    fi
+
+    # Configure API key if available
+    local api_key="${Z_AI_API_KEY:-$ANTHROPIC_AUTH_TOKEN}"
+    if [ -n "$api_key" ]; then
+        print_success "Z.AI API key found - Vision MCP Server ready to use"
+    else
+        print_warning "No Z.AI API key found"
+        print_info "Set Z_AI_API_KEY in your environment or Doppler to use Vision MCP Server"
+    fi
+
+    print_success "Vision MCP Server installation complete"
+    print_info "Usage: Add MCP server configuration to your Claude settings"
 }
 
 # ============================================================================
@@ -924,6 +977,17 @@ verify_installations() {
         else
             print_error "Tailscale: not found"
             all_good=false
+        fi
+    fi
+
+    # Check Vision MCP Server
+    if should_install_tool "vision-mcp-server"; then
+        if npx -y @z_ai/mcp-server --version >/dev/null 2>&1; then
+            local version_output=$(npx -y @z_ai/mcp-server --version 2>/dev/null || echo "installed")
+            print_success "Vision MCP Server: $version_output"
+        else
+            print_warning "Vision MCP Server: not verified (may still work)"
+            # Don't mark as failure since npx can work even if version check fails
         fi
     fi
     
@@ -996,6 +1060,7 @@ main() {
                 echo "  --skip-github     Skip GitHub CLI installation"
                 echo "  --skip-tailscale  Skip Tailscale installation"
                 echo "  --skip-doppler    Skip Doppler installation"
+                echo "  --skip-vision     Skip Vision MCP Server installation"
                 echo "  --list-envs       List available environments"
                 echo "  --help, -h        Show this help message"
                 exit 0
@@ -1047,6 +1112,10 @@ main() {
                 ;;
             --skip-doppler)
                 USER_SKIP_TOOLS+=("doppler")
+                shift
+                ;;
+            --skip-vision)
+                USER_SKIP_TOOLS+=("vision-mcp-server")
                 shift
                 ;;
             *)
@@ -1188,6 +1257,17 @@ main() {
                     echo -e "     ${BLUE}→${NC} Will auto-configure with API key"
                 fi
                 ;;
+            vision-mcp-server)
+                echo -e "  ${YELLOW}$step.${NC} Vision MCP Server (Z.AI)"
+                if npx -y @z_ai/mcp-server --version >/dev/null 2>&1; then
+                    echo -e "     ${GREEN}✓${NC} Already installed"
+                else
+                    echo -e "     ${BLUE}→${NC} Will install via npx"
+                fi
+                if [ -n "$Z_AI_API_KEY" ] || [ -n "$ANTHROPIC_AUTH_TOKEN" ]; then
+                    echo -e "     ${BLUE}→${NC} Will configure with Z.AI API key"
+                fi
+                ;;
             codex-cli)
                 echo -e "  ${YELLOW}$step.${NC} Codex CLI"
                 if command_exists codex; then
@@ -1248,6 +1328,7 @@ main() {
                 codex-cli) echo -e "  ${RED}✗${NC} Codex CLI" ;;
                 github-cli) echo -e "  ${RED}✗${NC} GitHub CLI" ;;
                 doppler) echo -e "  ${RED}✗${NC} Doppler SecretOps" ;;
+                vision-mcp-server) echo -e "  ${RED}✗${NC} Vision MCP Server" ;;
                 tailscale) echo -e "  ${RED}✗${NC} Tailscale VPN" ;;
             esac
         done
@@ -1303,17 +1384,21 @@ main() {
             doppler)
                 echo -e "${BLUE}Step $current_step/$total_steps: Doppler SecretOps${NC}"
                 ;;
+            vision-mcp-server)
+                echo -e "${BLUE}Step $current_step/$total_steps: Vision MCP Server${NC}"
+                ;;
             tailscale)
                 echo -e "${BLUE}Step $current_step/$total_steps: Tailscale VPN${NC}"
                 ;;
         esac
         echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        
+
         case "$tool" in
             claude-code) install_claude ;;
             codex-cli) install_codex ;;
             github-cli) install_github_cli ;;
             doppler) install_doppler ;;
+            vision-mcp-server) install_vision_mcp ;;
             tailscale) install_tailscale ;;
         esac
         

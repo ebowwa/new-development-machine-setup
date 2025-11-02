@@ -5,6 +5,20 @@
     "ANTHROPIC_MODEL": "glm-4.6",
     "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5"
   },
+  "mcpServers": {
+    "zai-mcp-server": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@z_ai/mcp-server"
+      ],
+      "env": {
+        "Z_AI_API_KEY": "${Z_AI_API_KEY}",
+        "Z_AI_MODE": "ZAI"
+      }
+    }
+  },
   "bashAliases": {
     "python": "uv run python",
     "python3": "uv run python",

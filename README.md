@@ -41,6 +41,7 @@ The setup script automatically detects your environment and configures it approp
 - **GitHub CLI** (`gh`) - GitHub from the command line
 - **Tailscale** - Zero-config VPN for secure networking
 - **Doppler** - SecretOps platform for environment variables
+- **Vision MCP Server** - Z.AI Vision capabilities for image and video analysis (when using Z.ai)
 
 ## 🚀 Quick Start
 
@@ -175,6 +176,7 @@ The script defaults to Claude Code when no preference is set. At any time you ca
 ./setup.sh --skip-github
 ./setup.sh --skip-tailscale
 ./setup.sh --skip-doppler
+./setup.sh --skip-vision      # Skip Vision MCP Server
 
 # Combine options
 ./setup.sh --env vps --skip-doppler
@@ -191,7 +193,7 @@ GITHUB_TOKEN=ghp_xxxxxxxxxxxx
 # AI assistant preference (codex, claude, or zai)
 AI_ASSISTANT=zai
 
-# Z.ai API Key (required when AI_ASSISTANT=zai)
+# Z.ai API Key (required when AI_ASSISTANT=zai and for Vision MCP Server)
 ZAI_API_KEY=zai-xxxxxxxxxxxx
 
 # Anthropic API Key (optional when using Anthropic directly)
@@ -275,6 +277,20 @@ claude /status  # Confirms the GLM-4.5 endpoint is active
 ```
 
 When `AI_ASSISTANT=zai`, the setup script writes your credentials to `~/.claude/settings.json` (creating the file if needed) so future shells automatically target `https://api.z.ai/api/anthropic`.
+
+### Vision MCP Server (included with Z.ai)
+When using Z.ai backend, the setup automatically configures Vision MCP Server for image and video analysis:
+
+```bash
+# Vision capabilities are available through Claude Code
+# Place an image in your directory and ask Claude to analyze it:
+claude
+> What does this image show? (attach or reference image file)
+
+# Vision MCP Server tools included:
+# - image_analysis: Analyze images and provide detailed descriptions
+# - video_analysis: Analyze videos and provide detailed descriptions
+```
 
 ### Codex CLI (if selected)
 ```bash

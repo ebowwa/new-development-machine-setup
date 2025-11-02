@@ -143,6 +143,20 @@ tools:
       - "configure_doppler_auth"
     config_env: "DOPPLER_TOKEN"
 
+  vision-mcp-server:
+    name: "Vision MCP Server"
+    description: "Z.AI Vision capabilities via Model Context Protocol for image and video analysis"
+    check_command: "npx -y @z_ai/mcp-server --version"
+    install_methods:
+      macos: "install_vision_mcp"
+      debian: "install_vision_mcp"
+      redhat: "install_vision_mcp"
+    dependencies:
+      all: ["nodejs", "npm"]
+    post_install:
+      - "configure_vision_mcp"
+    config_env: "Z_AI_API_KEY"
+
 # Additional setup functions that can be called
 additional_functions:
   install_docker:
@@ -219,6 +233,30 @@ additional_functions:
         # Login to Doppler if token is available
         if [ -n "$DOPPLER_TOKEN" ]; then
           echo "$DOPPLER_TOKEN" | doppler configure set token --scope /
+        fi
+
+  install_vision_mcp:
+    description: "Install Vision MCP Server for Z.AI"
+    commands:
+      all: |
+        # Vision MCP Server is installed via npx, but ensure Node.js is available
+        if ! command -v node >/dev/null 2>&1; then
+          echo "Node.js is required for Vision MCP Server"
+          exit 1
+        fi
+        # Test installation
+        npx -y @z_ai/mcp-server --version >/dev/null 2>&1 || {
+          echo "Failed to install Vision MCP Server"
+          exit 1
+        }
+
+  configure_vision_mcp:
+    description: "Configure Vision MCP Server with Z.AI API"
+    commands:
+      all: |
+        # Ensure Z.AI API key is available
+        if [ -z "$Z_AI_API_KEY" ] && [ -z "$ANTHROPIC_AUTH_TOKEN" ]; then
+          echo "Warning: No Z.AI API key found. Set Z_AI_API_KEY or configure Doppler."
         fi
 
   configure_claude:

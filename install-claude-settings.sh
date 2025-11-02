@@ -43,6 +43,20 @@ case "$AI_ASSISTANT" in
     "ANTHROPIC_MODEL": "glm-4.5",
     "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
   },
+  "mcpServers": {
+    "zai-mcp-server": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@z_ai/mcp-server"
+      ],
+      "env": {
+        "Z_AI_API_KEY": "${Z_AI_API_KEY}",
+        "Z_AI_MODE": "ZAI"
+      }
+    }
+  },
   "bashAliases": {
     "python": "uv run python",
     "python3": "uv run python",
@@ -59,6 +73,7 @@ EOF
         echo "   • Base URL: https://api.z.ai/api/anthropic"
         echo "   • Primary Model: glm-4.5"
         echo "   • Fast Model: glm-4.5-air"
+        echo "   • Vision MCP Server: @z_ai/mcp-server"
         echo "   • UV integration for Python"
         ;;
     *)
