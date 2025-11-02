@@ -276,33 +276,33 @@ get_environment_tools() {
     assistant_tool=$(get_ai_assistant_tool_id)
     
     # Start with default tool set (all tools)
-    TOOLS_TO_INSTALL=("tailscale" "github-cli" "${assistant_tool}" "doppler" "vision-mcp-server")
+    TOOLS_TO_INSTALL=("tailscale" "github-cli" "${assistant_tool}" "doppler" "vision-mcp-server" "web-search-mcp")
     
     # Override tool selection based on specific environment needs
     case "$env" in
         vps)
-            # VPS needs all tools including Claude and Vision MCP for remote development
-            TOOLS_TO_INSTALL=("tailscale" "github-cli" "doppler" "${assistant_tool}" "vision-mcp-server")
+            # VPS needs all tools including Claude, Vision MCP, and Search MCP for remote development
+            TOOLS_TO_INSTALL=("tailscale" "github-cli" "doppler" "${assistant_tool}" "vision-mcp-server" "web-search-mcp")
             SKIP_TOOLS=()
             ;;
         codespaces)
-            # Codespaces doesn't need Tailscale (GitHub handles networking) but gets Vision MCP
-            TOOLS_TO_INSTALL=("github-cli" "${assistant_tool}" "doppler" "vision-mcp-server")
+            # Codespaces doesn't need Tailscale but gets Vision MCP and Search MCP
+            TOOLS_TO_INSTALL=("github-cli" "${assistant_tool}" "doppler" "vision-mcp-server" "web-search-mcp")
             SKIP_TOOLS=("tailscale")
             ;;
         ci_cd)
             # CI/CD only needs GitHub CLI for releases/deployments
             TOOLS_TO_INSTALL=("github-cli")
-            SKIP_TOOLS=("tailscale" "${assistant_tool}" "vision-mcp-server")
+            SKIP_TOOLS=("tailscale" "${assistant_tool}" "vision-mcp-server" "web-search-mcp")
             ;;
         container)
             # Containers typically only need GitHub CLI
             TOOLS_TO_INSTALL=("github-cli")
-            SKIP_TOOLS=("tailscale" "${assistant_tool}" "vision-mcp-server")
+            SKIP_TOOLS=("tailscale" "${assistant_tool}" "vision-mcp-server" "web-search-mcp")
             ;;
         local_dev|default)
-            # Local dev and default get everything including Vision MCP
-            TOOLS_TO_INSTALL=("tailscale" "github-cli" "${assistant_tool}" "doppler" "vision-mcp-server")
+            # Local dev and default get everything including Vision MCP and Search MCP
+            TOOLS_TO_INSTALL=("tailscale" "github-cli" "${assistant_tool}" "doppler" "vision-mcp-server" "web-search-mcp")
             SKIP_TOOLS=()
             ;;
     esac
@@ -912,6 +912,33 @@ install_vision_mcp() {
     print_info "Usage: Add MCP server configuration to your Claude settings"
 }
 
+# Install Web Search MCP Server - Z.AI Search capabilities via HTTP MCP
+# Provides real-time web search, news, stock prices, weather, and more
+# Remote HTTP-based service - no local installation required
+install_web_search_mcp() {
+    # Skip if not needed for this environment
+    if ! should_install_tool "web-search-mcp"; then
+        print_info "Skipping Web Search MCP Server configuration (not needed for $DETECTED_ENV)"
+        return
+    fi
+
+    print_info "Configuring Web Search MCP Server..."
+
+    # Check API key availability
+    local api_key="${Z_AI_API_KEY:-$ANTHROPIC_AUTH_TOKEN}"
+    if [ -n "$api_key" ]; then
+        print_success "Z.AI API key found - Web Search MCP Server ready to use"
+        print_info "Search capabilities: web search, real-time information, news, weather, stocks"
+    else
+        print_warning "No Z.AI API key found"
+        print_info "Set Z_AI_API_KEY in your environment or Doppler to use Web Search MCP Server"
+        print_info "Get API key from: https://z.ai/manage-apikey/apikey-list"
+    fi
+
+    print_success "Web Search MCP Server configuration complete"
+    print_info "Usage: Remote HTTP service - no local installation required"
+}
+
 # ============================================================================
 # Installation Verification
 # ============================================================================
@@ -990,6 +1017,16 @@ verify_installations() {
             # Don't mark as failure since npx can work even if version check fails
         fi
     fi
+
+    # Check Web Search MCP Server
+    if should_install_tool "web-search-mcp"; then
+        local api_key="${Z_AI_API_KEY:-$ANTHROPIC_AUTH_TOKEN}"
+        if [ -n "$api_key" ]; then
+            print_success "Web Search MCP Server: Configured with API key"
+        else
+            print_warning "Web Search MCP Server: No API key found"
+        fi
+    fi
     
     echo ""
     if [ "$all_good" = true ]; then
@@ -1061,6 +1098,7 @@ main() {
                 echo "  --skip-tailscale  Skip Tailscale installation"
                 echo "  --skip-doppler    Skip Doppler installation"
                 echo "  --skip-vision     Skip Vision MCP Server installation"
+                echo "  --skip-search     Skip Web Search MCP Server installation"
                 echo "  --list-envs       List available environments"
                 echo "  --help, -h        Show this help message"
                 exit 0
@@ -1116,6 +1154,10 @@ main() {
                 ;;
             --skip-vision)
                 USER_SKIP_TOOLS+=("vision-mcp-server")
+                shift
+                ;;
+            --skip-search)
+                USER_SKIP_TOOLS+=("web-search-mcp")
                 shift
                 ;;
             *)
@@ -1268,6 +1310,13 @@ main() {
                     echo -e "     ${BLUE}→${NC} Will configure with Z.AI API key"
                 fi
                 ;;
+            web-search-mcp)
+                echo -e "  ${YELLOW}$step.${NC} Web Search MCP Server (Z.AI)"
+                echo -e "     ${BLUE}→${NC} Remote HTTP service configuration"
+                if [ -n "$Z_AI_API_KEY" ] || [ -n "$ANTHROPIC_AUTH_TOKEN" ]; then
+                    echo -e "     ${BLUE}→${NC} Will configure with Z.AI API key"
+                fi
+                ;;
             codex-cli)
                 echo -e "  ${YELLOW}$step.${NC} Codex CLI"
                 if command_exists codex; then
@@ -1329,6 +1378,7 @@ main() {
                 github-cli) echo -e "  ${RED}✗${NC} GitHub CLI" ;;
                 doppler) echo -e "  ${RED}✗${NC} Doppler SecretOps" ;;
                 vision-mcp-server) echo -e "  ${RED}✗${NC} Vision MCP Server" ;;
+                web-search-mcp) echo -e "  ${RED}✗${NC} Web Search MCP Server" ;;
                 tailscale) echo -e "  ${RED}✗${NC} Tailscale VPN" ;;
             esac
         done
@@ -1387,6 +1437,9 @@ main() {
             vision-mcp-server)
                 echo -e "${BLUE}Step $current_step/$total_steps: Vision MCP Server${NC}"
                 ;;
+            web-search-mcp)
+                echo -e "${BLUE}Step $current_step/$total_steps: Web Search MCP Server${NC}"
+                ;;
             tailscale)
                 echo -e "${BLUE}Step $current_step/$total_steps: Tailscale VPN${NC}"
                 ;;
@@ -1399,6 +1452,7 @@ main() {
             github-cli) install_github_cli ;;
             doppler) install_doppler ;;
             vision-mcp-server) install_vision_mcp ;;
+            web-search-mcp) install_web_search_mcp ;;
             tailscale) install_tailscale ;;
         esac
         

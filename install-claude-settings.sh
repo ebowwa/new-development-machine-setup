@@ -55,6 +55,13 @@ case "$AI_ASSISTANT" in
         "Z_AI_API_KEY": "${Z_AI_API_KEY}",
         "Z_AI_MODE": "ZAI"
       }
+    },
+    "web-search-prime": {
+      "type": "http",
+      "url": "https://api.z.ai/api/mcp/web_search_prime/mcp",
+      "headers": {
+        "Authorization": "Bearer ${Z_AI_API_KEY}"
+      }
     }
   },
   "bashAliases": {
@@ -74,6 +81,7 @@ EOF
         echo "   • Primary Model: glm-4.5"
         echo "   • Fast Model: glm-4.5-air"
         echo "   • Vision MCP Server: @z_ai/mcp-server"
+        echo "   • Web Search MCP Server: Z.AI web search capabilities"
         echo "   • UV integration for Python"
         ;;
     *)

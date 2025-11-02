@@ -157,6 +157,16 @@ tools:
       - "configure_vision_mcp"
     config_env: "Z_AI_API_KEY"
 
+  web-search-mcp:
+    name: "Web Search MCP Server"
+    description: "Z.AI Search capabilities via HTTP MCP for real-time web search and information retrieval"
+    check_command: "test -n \"$Z_AI_API_KEY\""
+    install_methods:
+      all: "install_web_search_mcp"
+    post_install:
+      - "configure_web_search_mcp"
+    config_env: "Z_AI_API_KEY"
+
 # Additional setup functions that can be called
 additional_functions:
   install_docker:
@@ -257,6 +267,22 @@ additional_functions:
         # Ensure Z.AI API key is available
         if [ -z "$Z_AI_API_KEY" ] && [ -z "$ANTHROPIC_AUTH_TOKEN" ]; then
           echo "Warning: No Z.AI API key found. Set Z_AI_API_KEY or configure Doppler."
+        fi
+
+  install_web_search_mcp:
+    description: "Configure Web Search MCP Server"
+    commands:
+      all: |
+        # Web Search MCP is remote HTTP-based, no local installation needed
+        echo "Web Search MCP Server configured as remote service"
+
+  configure_web_search_mcp:
+    description: "Configure Web Search MCP Server with Z.AI API"
+    commands:
+      all: |
+        # Ensure Z.AI API key is available for web search
+        if [ -z "$Z_AI_API_KEY" ] && [ -z "$ANTHROPIC_AUTH_TOKEN" ]; then
+          echo "Warning: No Z.AI API key found. Set Z_AI_API_KEY to enable web search."
         fi
 
   configure_claude:

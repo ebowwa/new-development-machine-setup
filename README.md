@@ -42,6 +42,7 @@ The setup script automatically detects your environment and configures it approp
 - **Tailscale** - Zero-config VPN for secure networking
 - **Doppler** - SecretOps platform for environment variables
 - **Vision MCP Server** - Z.AI Vision capabilities for image and video analysis (when using Z.ai)
+- **Web Search MCP Server** - Z.AI Search capabilities for real-time web search and information retrieval (when using Z.ai)
 
 ## 🚀 Quick Start
 
@@ -177,6 +178,7 @@ The script defaults to Claude Code when no preference is set. At any time you ca
 ./setup.sh --skip-tailscale
 ./setup.sh --skip-doppler
 ./setup.sh --skip-vision      # Skip Vision MCP Server
+./setup.sh --skip-search      # Skip Web Search MCP Server
 
 # Combine options
 ./setup.sh --env vps --skip-doppler
@@ -193,7 +195,7 @@ GITHUB_TOKEN=ghp_xxxxxxxxxxxx
 # AI assistant preference (codex, claude, or zai)
 AI_ASSISTANT=zai
 
-# Z.ai API Key (required when AI_ASSISTANT=zai and for Vision MCP Server)
+# Z.ai API Key (required when AI_ASSISTANT=zai and for Vision/Web Search MCP Servers)
 ZAI_API_KEY=zai-xxxxxxxxxxxx
 
 # Anthropic API Key (optional when using Anthropic directly)
@@ -290,6 +292,22 @@ claude
 # Vision MCP Server tools included:
 # - image_analysis: Analyze images and provide detailed descriptions
 # - video_analysis: Analyze videos and provide detailed descriptions
+```
+
+### Web Search MCP Server (included with Z.ai)
+When using Z.ai backend, the setup automatically configures Web Search MCP Server for real-time search capabilities:
+
+```bash
+# Search capabilities are available through Claude Code
+# Ask Claude to search for current information:
+claude
+> Search for the latest AI technology developments
+
+# Web Search MCP Server tools included:
+# - webSearchPrime: Search web information with real-time results
+#   * Page titles, URLs, and summaries
+#   * Real-time news and information
+#   * Stock prices, weather, and more
 ```
 
 ### Codex CLI (if selected)
