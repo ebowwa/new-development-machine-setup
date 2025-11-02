@@ -35,7 +35,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/situations.yaml"
 
 # Default AI assistant selection (can be overridden via env or CLI)
-DEFAULT_AI_ASSISTANT="claude"
+DEFAULT_AI_ASSISTANT="zai"
 
 # Determine if an AI assistant value is supported
 is_valid_ai_assistant() {
