@@ -940,6 +940,113 @@ install_web_search_mcp() {
 }
 
 # ============================================================================
+# MCP Server Activation
+# ============================================================================
+
+# Activate MCP servers using the API key from Doppler
+# This completes the MCP setup that install_vision_mcp and install_web_search_mcp start
+activate_mcp_servers() {
+    # Skip if not needed for this environment
+    if ! should_install_tool "vision-mcp-server" && ! should_install_tool "web-search-mcp"; then
+        print_info "Skipping MCP server activation (not needed for $DETECTED_ENV)"
+        return
+    fi
+
+    print_info "Activating MCP servers..."
+
+    # Check if Claude Code is available
+    if ! command_exists claude; then
+        print_warning "Claude Code not found - skipping MCP server activation"
+        print_info "Run setup-mcp-servers.sh manually after installing Claude Code"
+        return
+    fi
+
+    # Check if Doppler is available and configured
+    if ! command_exists doppler; then
+        print_warning "Doppler CLI not found - skipping MCP server activation"
+        print_info "Run setup-mcp-servers.sh manually after installing Doppler"
+        return
+    fi
+
+    # Try to determine which config to use
+    local config_name="${DOPPLER_CONFIG:-prd}"
+    if [ -n "$DOPPLER_CONFIG" ]; then
+        config_name="$DOPPLER_CONFIG"
+    else
+        # Try common config names in order of preference
+        for config in "prd" "dev" "staging"; do
+            if doppler run --project seed --config "$config" -- printenv Z_AI_API_KEY >/dev/null 2>&1; then
+                config_name="$config"
+                break
+            fi
+        done
+    fi
+
+    print_info "Using Doppler config: $config_name"
+
+    # Test access to Doppler project
+    if ! doppler run --project seed --config "$config_name" -- printenv Z_AI_API_KEY >/dev/null 2>&1; then
+        print_warning "Cannot access Doppler seed project with config '$config_name'"
+        print_info "Skipping MCP server activation - run setup-mcp-servers.sh manually"
+        return
+    fi
+
+    # Check if MCP servers are already installed
+    local vision_installed=false
+    local web_search_installed=false
+
+    if [ "$FORCE_MCP_ACTIVATION" = true ]; then
+        print_info "Force MCP activation requested - reinstalling all MCP servers"
+        # Remove existing servers to force reinstall
+        claude mcp remove zai-mcp-server >/dev/null 2>&1 || true
+        claude mcp remove web-search-prime >/dev/null 2>&1 || true
+    else
+        if claude mcp list 2>/dev/null | grep -q "zai-mcp-server"; then
+            vision_installed=true
+            print_info "Vision MCP Server already configured"
+        fi
+
+        if claude mcp list 2>/dev/null | grep -q "web-search-prime"; then
+            web_search_installed=true
+            print_info "Web Search MCP Server already configured"
+        fi
+    fi
+
+    # Install Vision MCP Server if needed
+    if [ "$vision_installed" = false ] && should_install_tool "vision-mcp-server"; then
+        print_info "Installing Vision MCP Server..."
+        if doppler run --project seed --config "$config_name" -- \
+            claude mcp add -s user zai-mcp-server --env Z_AI_API_KEY="$Z_AI_API_KEY" Z_AI_MODE=ZAI -- npx -y "@z_ai/mcp-server" >/dev/null 2>&1; then
+            print_success "Vision MCP Server activated"
+        else
+            print_warning "Failed to activate Vision MCP Server"
+        fi
+    fi
+
+    # Install Web Search MCP Server if needed
+    if [ "$web_search_installed" = false ] && should_install_tool "web-search-mcp"; then
+        print_info "Installing Web Search MCP Server..."
+        if doppler run --project seed --config "$config_name" -- \
+            claude mcp add -s user -t http web-search-prime https://api.z.ai/api/mcp/web_search_prime/mcp --header "Authorization: Bearer $Z_AI_API_KEY" >/dev/null 2>&1; then
+            print_success "Web Search MCP Server activated"
+        else
+            print_warning "Failed to activate Web Search MCP Server"
+        fi
+    fi
+
+    # Verify installation
+    if [ "$vision_installed" = true ] || [ "$web_search_installed" = true ] || \
+       doppler run --project seed --config "$config_name" -- \
+           claude mcp list 2>/dev/null | grep -q "zai-mcp-server\|web-search-prime"; then
+        print_success "MCP servers activated successfully"
+        print_info "Start a new Claude Code session to access MCP tools"
+    else
+        print_warning "MCP server activation failed or incomplete"
+        print_info "Run './setup-mcp-servers.sh' to manually configure MCP servers"
+    fi
+}
+
+# ============================================================================
 # Installation Verification
 # ============================================================================
 
@@ -1099,6 +1206,8 @@ main() {
                 echo "  --skip-doppler    Skip Doppler installation"
                 echo "  --skip-vision     Skip Vision MCP Server installation"
                 echo "  --skip-search     Skip Web Search MCP Server installation"
+                echo "  --skip-mcp        Skip all MCP server installation and activation"
+                echo "  --force-mcp       Force reinstallation of MCP servers even if already configured"
                 echo "  --list-envs       List available environments"
                 echo "  --help, -h        Show this help message"
                 exit 0
@@ -1158,6 +1267,16 @@ main() {
                 ;;
             --skip-search)
                 USER_SKIP_TOOLS+=("web-search-mcp")
+                shift
+                ;;
+            --skip-mcp)
+                USER_SKIP_TOOLS+=("vision-mcp-server")
+                USER_SKIP_TOOLS+=("web-search-mcp")
+                shift
+                ;;
+            --force-mcp)
+                # Force MCP activation even if already configured
+                FORCE_MCP_ACTIVATION=true
                 shift
                 ;;
             *)
@@ -1470,7 +1589,14 @@ main() {
     
     # Verify all tools were installed successfully
     verify_installations
-    
+
+    # ========================================
+    # MCP Server Activation
+    # ========================================
+
+    # Activate MCP servers if needed
+    activate_mcp_servers
+
     # ========================================
     # Setup Complete - Show Next Steps
     # ========================================
@@ -1480,7 +1606,7 @@ main() {
     print_info "Environment configured: $DETECTED_ENV"
     echo ""
     print_info "Next steps:"
-    
+
     local assistant_next_step
     assistant_next_step=$(get_ai_assistant_next_step)
 
@@ -1490,20 +1616,24 @@ main() {
             echo "  1. Configure Tailscale: sudo tailscale up"
             echo "  2. ${assistant_next_step}"
             echo "  3. Setup GitHub deploy keys if needed"
+            echo "  4. Start a new Claude Code session to access MCP tools"
             ;;
         codespaces)
             echo "  1. Run 'gh auth login' if not already configured"
             echo "  2. ${assistant_next_step}"
+            echo "  3. Start a new Claude Code session to access MCP tools"
             ;;
         local_dev)
             echo "  1. Copy .env.example to .env and add your API keys"
             echo "  2. ${assistant_next_step}"
             echo "  3. Run 'gh auth login' if not already configured"
             echo "  4. Run 'tailscale up' to connect to your tailnet"
+            echo "  5. Start a new Claude Code session to access MCP tools"
             ;;
         *)
             echo "  1. Copy .env.example to .env and add your API keys"
             echo "  2. Configure the installed tools as needed"
+            echo "  3. Start a new Claude Code session to access MCP tools"
             ;;
     esac
     
