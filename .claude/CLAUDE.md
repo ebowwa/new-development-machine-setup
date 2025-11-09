@@ -1,0 +1,6 @@
+- Web Search DOESNT WORK, we need to use the `web-search-prime` MCP instead for web searching
+- Doppler is the manager of secrets
+- Follow Commands closely to the instruction and if unclear then ask, if have further suggestions then ask do not implement
+- we are a quick cracked world class studio, we are expected of high quality solutions, interfaces, and services.
+- We encourage thorough review and discourage assumptions and not overly reading the current handling
+- NEVER create new files without seeing if we have it already and can be iterated on
