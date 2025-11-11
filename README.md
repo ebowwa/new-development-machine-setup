@@ -43,6 +43,7 @@ The setup script automatically detects your environment and configures it approp
 - **Doppler** - SecretOps platform for environment variables
 - **Vision MCP Server** - Z.AI Vision capabilities for image and video analysis (when using Z.ai)
 - **Web Search MCP Server** - Z.AI Search capabilities for real-time web search and information retrieval (when using Z.ai)
+- **Supabase MCP Server** - Official Supabase integration for database management and queries (requires Supabase project)
 
 ## 🚀 Quick Start
 
@@ -310,6 +311,31 @@ claude
 #   * Stock prices, weather, and more
 ```
 
+### Supabase MCP Server (Manual Setup)
+For users with Supabase projects, the official Supabase MCP server provides database management capabilities:
+
+```bash
+# Configure Supabase MCP server (manual setup required)
+# See docs/Supabase_MCP_Integration.md for detailed instructions
+
+# Requirements:
+# - Supabase Personal Access Token (PAT)
+# - Supabase project reference
+# - Claude Code with MCP support
+
+# Example usage after setup:
+claude
+> How many tables do we have in the database?
+> Show me the structure of the apps table
+> Insert a new record into the app_info table
+```
+
+**Supabase MCP capabilities:**
+- Database schema exploration
+- Natural language SQL queries
+- Table and data management
+- Direct database operations through Claude Code
+
 ### Codex CLI (if selected)
 ```bash
 codex login
@@ -350,6 +376,7 @@ doppler configure set token $DOPPLER_TOKEN --scope /
 - `.claude/settings.template.json` - Claude settings template for Z.ai
 - `.claude/settings.local.json` - Local Claude settings
 - `install-claude-settings.sh` - Claude settings installation script
+- `docs/Supabase_MCP_Integration.md` - Complete Supabase MCP server setup guide
 
 ## 🔒 Security
 
