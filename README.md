@@ -44,6 +44,7 @@ The setup script automatically detects your environment and configures it approp
 - **Vision MCP Server** - Z.AI Vision capabilities for image and video analysis (when using Z.ai)
 - **Web Search MCP Server** - Z.AI Search capabilities for real-time web search and information retrieval (when using Z.ai)
 - **Supabase MCP Server** - Official Supabase integration for database management and queries (requires Supabase project)
+- **GitHub MCP Server** - Official GitHub integration for repository intelligence and workflow automation (requires GitHub PAT)
 
 ## 🚀 Quick Start
 
@@ -336,6 +337,34 @@ claude
 - Table and data management
 - Direct database operations through Claude Code
 
+### GitHub MCP Server (Manual Setup)
+For advanced GitHub operations, the official GitHub MCP server provides repository intelligence and workflow automation:
+
+```bash
+# Configure GitHub MCP server (manual setup required)
+# See docs/GitHub_MCP_Integration.md for detailed instructions
+
+# Requirements:
+# - GitHub Personal Access Token (PAT)
+# - Claude Code with MCP support
+
+# Example usage after setup:
+claude
+> Find all TypeScript repositories in my organization
+> Search for TODO comments across all my repositories
+> Create issues for bugs found in the codebase
+> Analyze commit patterns across my projects
+```
+
+**GitHub MCP capabilities:**
+- Cross-repository code search
+- Semantic code understanding
+- Workflow automation (issues, PRs, projects)
+- Organization-level analytics
+- Natural language GitHub operations
+
+**Note:** The seed project includes GitHub CLI for direct command operations. Use GitHub MCP for conversational tasks and CLI for precise control.
+
 ### Codex CLI (if selected)
 ```bash
 codex login
@@ -377,6 +406,7 @@ doppler configure set token $DOPPLER_TOKEN --scope /
 - `.claude/settings.local.json` - Local Claude settings
 - `install-claude-settings.sh` - Claude settings installation script
 - `docs/Supabase_MCP_Integration.md` - Complete Supabase MCP server setup guide
+- `docs/GitHub_MCP_Integration.md` - Comprehensive GitHub MCP server documentation
 
 ## 🔒 Security
 
